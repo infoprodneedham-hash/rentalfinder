@@ -36,12 +36,14 @@
       transform: scale(1.1);
     }
     .center-pin-pulse {
-      width: 20px;
-      height: 20px;
+      width: 22px;
+      height: 22px;
       border-radius: 50%;
       background: #ef4444;
       border: 3px solid white;
+      box-shadow: 0 0 0 rgba(239, 68, 68, 0.6);
       animation: pulse-ring 2s infinite;
+      cursor: grab;
     }
     @keyframes pulse-ring {
       0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
@@ -63,21 +65,19 @@
         <div>
           <div class="flex items-center gap-2">
             <h1 class="text-base font-bold text-slate-900 tracking-tight leading-none">GeelongRent<span class="text-emerald-600">Radar</span></h1>
-            <span class="bg-emerald-50 text-emerald-700 text-[10px] font-semibold px-2 py-0.5 rounded-full border border-emerald-200">No Hardcoded Data</span>
+            <span class="bg-emerald-50 text-emerald-700 text-[10px] font-semibold px-2 py-0.5 rounded-full border border-emerald-200">Interactive Map Pinning</span>
           </div>
-          <p class="text-[11px] text-slate-500 mt-0.5">Direct Portal Deep-Querying & Local Tracking</p>
+          <p class="text-[11px] text-slate-500 mt-0.5">Click anywhere on the map to set a new search origin</p>
         </div>
       </div>
 
       <!-- Action Buttons -->
       <div class="flex items-center gap-2">
-        <!-- Live Sync: Cleans dead listings & checks active filters -->
-        <button id="liveSyncBtn" title="Eliminate inactive listings and refresh search queries" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold transition active:scale-95 shadow-xs">
+        <button id="liveSyncBtn" title="Clean inactive listings and refresh search queries" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold transition active:scale-95 shadow-xs">
           <i data-lucide="refresh-cw" id="syncSpinner" class="w-3.5 h-3.5"></i>
           <span>Live Sync & Clean</span>
         </button>
 
-        <!-- Direct Portal Deep Search with Filter Propagation -->
         <button id="domainSearchBtn" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold transition shadow-xs">
           <i data-lucide="external-link" class="w-3.5 h-3.5"></i>
           <span>Live Domain Search</span>
@@ -100,10 +100,18 @@
   <section class="bg-white border-b border-slate-200 flex-none px-4 py-2.5 z-20">
     <div class="max-w-[1920px] mx-auto flex flex-wrap items-center justify-between gap-3">
       <div class="flex items-center gap-3">
-        <div class="relative min-w-[200px]">
+        <!-- Pin Location input display + Recenter shortcut -->
+        <div class="relative min-w-[240px]">
+          <div class="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none text-slate-400">
+            <i data-lucide="map-pin" class="w-3.5 h-3.5 text-emerald-600"></i>
+          </div>
           <input type="text" id="centerLocationName" value="Geelong Central (Vic 3220)" readonly
-            class="bg-slate-100 border border-slate-200 text-slate-800 text-xs rounded-lg px-3 py-1.5 w-full font-semibold cursor-default">
+            class="bg-slate-100 border border-slate-200 text-slate-800 text-xs rounded-lg pl-8 pr-8 py-1.5 w-full font-semibold cursor-default">
+          <button id="recenterBtn" title="Reset Pin to Central Geelong" class="absolute inset-y-0 right-0 pr-2 flex items-center text-slate-400 hover:text-slate-600">
+            <i data-lucide="crosshair" class="w-3.5 h-3.5"></i>
+          </button>
         </div>
+
         <div class="flex items-center gap-1 bg-slate-100 p-1 rounded-lg border border-slate-200 text-xs">
           <span class="text-slate-400 px-2 font-medium text-[11px]">Radius:</span>
           <button class="radius-btn px-2.5 py-0.5 rounded font-semibold text-slate-700" data-radius="5">5km</button>
@@ -111,6 +119,10 @@
           <button class="radius-btn px-2.5 py-0.5 rounded font-semibold bg-emerald-600 text-white" data-radius="15">15km</button>
           <button class="radius-btn px-2.5 py-0.5 rounded font-semibold text-slate-700" data-radius="30">30km</button>
         </div>
+
+        <span class="text-[11px] text-slate-400 hidden xl:inline-flex items-center gap-1">
+          <i data-lucide="mouse-pointer-click" class="w-3 h-3 text-emerald-600"></i> Tap anywhere on map to drop a new pin
+        </span>
       </div>
 
       <div class="flex items-center gap-3">
@@ -146,10 +158,16 @@
     <!-- MAP -->
     <section class="flex-1 relative h-full bg-slate-100 z-0">
       <div id="map" class="w-full h-full"></div>
+      
+      <!-- Center Pin Coordinates Badge Overlay -->
+      <div class="absolute top-4 left-4 z-[400] bg-white/95 backdrop-blur-xs px-3 py-1.5 rounded-lg shadow-sm border border-slate-200 text-xs flex items-center gap-2">
+        <span class="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse"></span>
+        <span id="centerPinCoordsLabel" class="font-medium text-slate-700">Pin: -38.150, 144.362</span>
+      </div>
     </section>
   </main>
 
-  <!-- TRACK PROPERTY MODAL (WITH LIVE ADDRESS GEOCODER) -->
+  <!-- TRACK PROPERTY MODAL -->
   <div id="addModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-[9999] hidden flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl max-w-md w-full shadow-2xl p-5 border border-slate-200 space-y-3.5 text-xs">
       <div class="flex items-center justify-between pb-2 border-b border-slate-100">
@@ -214,7 +232,6 @@
   <script>
     const GEELONG_COORDS = { lat: -38.1499, lng: 144.3617 };
     
-    // Application starts with an EMPTY database or loads what you actively track
     let state = {
       center: { ...GEELONG_COORDS },
       radiusKm: 15,
@@ -223,26 +240,20 @@
       properties: JSON.parse(localStorage.getItem('tracked_rentals') || '[]'),
       map: null,
       radiusCircle: null,
+      centerPinMarker: null,
       markers: []
     };
 
-    /**
-     * DEEP SEARCH URL GENERATOR
-     * Embeds address & suburb directly into the URL parameters so the destination portal opens pre-filtered.
-     */
     function buildPortalSearchUrl(portal, addressQuery = null) {
       const maxRent = state.maxWeeklyRent;
-      
       if (portal === 'domain') {
         if (addressQuery) {
-          // Encodes the specific street or suburb directly into the Domain search route
           const formatted = encodeURIComponent(addressQuery.trim());
           return `https://www.domain.com.au/rent/?street-name=${formatted}&price=0-${maxRent}`;
         }
         return `https://www.domain.com.au/rent/geelong-vic-3220/?price=0-${maxRent}&distance=${state.radiusKm}`;
       } else {
         if (addressQuery) {
-          // Encodes query string into realestate.com.au
           const formatted = encodeURIComponent(addressQuery.trim());
           return `https://www.realestate.com.au/rent/property-between-0-${maxRent}-in-${formatted}/list-1`;
         }
@@ -250,23 +261,75 @@
       }
     }
 
-    // Leaflet Init
+    /**
+     * Set a new center point anywhere on the map
+     */
+    function setMapPin(lat, lng, labelText = null) {
+      state.center = { lat, lng };
+
+      // Update Center Pulsing Marker
+      if (state.centerPinMarker) {
+        state.centerPinMarker.setLatLng([lat, lng]);
+      } else {
+        const pinIcon = L.divIcon({
+          className: '',
+          html: '<div class="center-pin-pulse"></div>',
+          iconSize: [22, 22],
+          iconAnchor: [11, 11]
+        });
+        state.centerPinMarker = L.marker([lat, lng], { icon: pinIcon, zIndexOffset: 1000 }).addTo(state.map);
+      }
+
+      // Update Radius Circle
+      if (state.radiusCircle) {
+        state.radiusCircle.setLatLng([lat, lng]);
+        state.radiusCircle.setRadius(state.radiusKm * 1000);
+      } else {
+        state.radiusCircle = L.circle([lat, lng], {
+          radius: state.radiusKm * 1000,
+          color: '#00843D',
+          fillColor: '#10b981',
+          fillOpacity: 0.08,
+          weight: 2
+        }).addTo(state.map);
+      }
+
+      // Update text indicators
+      document.getElementById('centerPinCoordsLabel').textContent = `Pin: ${lat.toFixed(3)}, ${lng.toFixed(3)}`;
+      
+      if (labelText) {
+        document.getElementById('centerLocationName').value = labelText;
+      } else {
+        document.getElementById('centerLocationName').value = `Custom Pin (${lat.toFixed(3)}, ${lng.toFixed(3)})`;
+        // Reverse geocode asynchronously to show friendly name if available
+        fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`)
+          .then(r => r.json())
+          .then(data => {
+            if (data && data.address) {
+              const sub = data.address.suburb || data.address.town || data.address.village || data.address.city;
+              if (sub) {
+                document.getElementById('centerLocationName').value = `${sub} (Pin)`;
+              }
+            }
+          })
+          .catch(() => {});
+      }
+
+      renderListings();
+    }
+
     function initMap() {
       state.map = L.map('map', { zoomControl: false }).setView([state.center.lat, state.center.lng], 12);
       L.control.zoom({ position: 'topright' }).addTo(state.map);
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(state.map);
 
-      state.radiusCircle = L.circle([state.center.lat, state.center.lng], {
-        radius: state.radiusKm * 1000,
-        color: '#00843D',
-        fillColor: '#10b981',
-        fillOpacity: 0.08,
-        weight: 2
-      }).addTo(state.map);
+      // Render initial center pin & radius circle
+      setMapPin(state.center.lat, state.center.lng, 'Geelong Central (Vic 3220)');
 
-      L.marker([state.center.lat, state.center.lng], {
-        icon: L.divIcon({ className: '', html: '<div class="center-pin-pulse"></div>', iconSize: [20, 20], iconAnchor: [10, 10] })
-      }).addTo(state.map);
+      // MAP CLICK EVENT TO PLACE PIN ANYWHERE
+      state.map.on('click', (e) => {
+        setMapPin(e.latlng.lat, e.latlng.lng);
+      });
     }
 
     function calculateDistance(lat1, lon1, lat2, lon2) {
@@ -283,7 +346,6 @@
       state.markers.forEach(m => state.map.removeLayer(m));
       state.markers = [];
 
-      // Filter: only active listings within user-selected rent and radius
       const activeListings = state.properties.filter(p => {
         const dist = calculateDistance(state.center.lat, state.center.lng, p.lat, p.lng);
         const inRadius = dist <= state.radiusKm;
@@ -293,14 +355,14 @@
         return inRadius && inRent && inType && isActive;
       });
 
-      document.getElementById('resultsCount').textContent = `${activeListings.length} Active Tracked Listings`;
+      document.getElementById('resultsCount').textContent = `${activeListings.length} Active Listings Within ${state.radiusKm}km`;
 
       if (activeListings.length === 0) {
         container.innerHTML = `
           <div class="py-12 text-center text-slate-400">
             <i data-lucide="inbox" class="w-8 h-8 mx-auto mb-2 opacity-50"></i>
-            <p class="text-xs font-semibold text-slate-600">No active properties stored.</p>
-            <p class="text-[11px] text-slate-400 mt-1 max-w-xs mx-auto">Use "Live Domain Search" or "Live REA Search" above, or track an address directly.</p>
+            <p class="text-xs font-semibold text-slate-600">No active properties inside this radius.</p>
+            <p class="text-[11px] text-slate-400 mt-1 max-w-xs mx-auto">Click anywhere on the map to shift your search circle, or track a new rental address.</p>
           </div>
         `;
         lucide.createIcons();
@@ -327,7 +389,6 @@
             <span>${prop.type}</span> • <span>${prop.beds} Beds</span>
           </div>
 
-          <!-- ONE-CLICK ADDRESS DEEP SEARCH BUTTONS -->
           <div class="flex items-center gap-2 pt-1 border-t border-slate-100">
             <a href="${domainUrl}" target="_blank" rel="noopener noreferrer" 
                class="flex-1 py-1.5 px-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-lg text-[11px] font-semibold text-center flex items-center justify-center gap-1">
@@ -344,7 +405,6 @@
         `;
         container.appendChild(card);
 
-        // Marker on map
         const badge = L.divIcon({
           className: '',
           html: `<div class="price-badge-marker">$${prop.rent}</div>`,
@@ -357,14 +417,12 @@
       lucide.createIcons();
     }
 
-    // Change listing status and save
     window.markInactive = function(id) {
       state.properties = state.properties.map(p => p.id === id ? { ...p, status: 'inactive' } : p);
       localStorage.setItem('tracked_rentals', JSON.stringify(state.properties));
       renderListings();
     };
 
-    // Live Geocode lookups via OpenStreetMap Nominatim
     async function locateAddress(query) {
       const geoStatus = document.getElementById('geoStatus');
       geoStatus.textContent = 'Resolving coordinates...';
@@ -379,11 +437,11 @@
           geoStatus.textContent = `Located: ${lat.toFixed(4)}, ${lon.toFixed(4)}`;
           geoStatus.className = 'text-[10px] text-emerald-600 mt-1 font-medium';
         } else {
-          geoStatus.textContent = 'Address not resolved automatically; defaulting to central Geelong.';
+          geoStatus.textContent = 'Address not resolved automatically; defaulting to active map pin.';
           geoStatus.className = 'text-[10px] text-amber-600 mt-1';
         }
       } catch (e) {
-        geoStatus.textContent = 'Geocoding offline; using central Geelong.';
+        geoStatus.textContent = 'Geocoding offline; using active map pin.';
       }
     }
 
@@ -397,9 +455,14 @@
           });
           btn.classList.add('bg-emerald-600', 'text-white');
           state.radiusKm = parseInt(btn.dataset.radius, 10);
-          state.radiusCircle.setRadius(state.radiusKm * 1000);
-          renderListings();
+          setMapPin(state.center.lat, state.center.lng);
         });
+      });
+
+      // Recenter Button
+      document.getElementById('recenterBtn').addEventListener('click', () => {
+        setMapPin(GEELONG_COORDS.lat, GEELONG_COORDS.lng, 'Geelong Central (Vic 3220)');
+        state.map.flyTo([GEELONG_COORDS.lat, GEELONG_COORDS.lng], 13);
       });
 
       // Rent Slider
@@ -415,7 +478,7 @@
         renderListings();
       });
 
-      // Direct Live Search Buttons (Top Bar)
+      // Top Portal Search Buttons
       document.getElementById('domainSearchBtn').addEventListener('click', () => {
         window.open(buildPortalSearchUrl('domain'), '_blank');
       });
@@ -423,7 +486,7 @@
         window.open(buildPortalSearchUrl('rea'), '_blank');
       });
 
-      // Live Sync & Clean Button: purges expired and recalibrates radius
+      // Live Sync & Clean Button
       document.getElementById('liveSyncBtn').addEventListener('click', () => {
         const spinner = document.getElementById('syncSpinner');
         spinner.classList.add('animate-spin');
@@ -433,7 +496,7 @@
         }, 500);
       });
 
-      // Prune inactive button: removes all inactive properties permanently from storage
+      // Prune inactive button
       document.getElementById('purgeInactiveBtn').addEventListener('click', () => {
         state.properties = state.properties.filter(p => p.status === 'active');
         localStorage.setItem('tracked_rentals', JSON.stringify(state.properties));
@@ -442,7 +505,11 @@
 
       // Modal Triggers
       const modal = document.getElementById('addModal');
-      document.getElementById('openAddModalBtn').addEventListener('click', () => modal.classList.remove('hidden'));
+      document.getElementById('openAddModalBtn').addEventListener('click', () => {
+        document.getElementById('resolvedLat').value = state.center.lat;
+        document.getElementById('resolvedLng').value = state.center.lng;
+        modal.classList.remove('hidden');
+      });
       document.getElementById('closeAddModalBtn').addEventListener('click', () => modal.classList.add('hidden'));
       document.getElementById('cancelTrackBtn').addEventListener('click', () => modal.classList.add('hidden'));
 
