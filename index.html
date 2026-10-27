@@ -3,52 +3,38 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Geelong Rental Radar | Live Portal Deep-Search</title>
+  <title>Geelong Rental Radar | Live Portal Search Launcher</title>
   
+  <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Google Fonts: Inter -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   
+  <!-- Leaflet CSS & JS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  
+  <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
 
   <style>
-    .price-badge-marker {
-      background: white;
-      border: 2px solid #00843D;
-      color: #0f172a;
-      font-weight: 700;
-      font-size: 11px;
-      padding: 3px 8px;
-      border-radius: 9999px;
-      box-shadow: 0 4px 6px -1px rgba(0,0,0,0.18);
-      white-space: nowrap;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 3px;
-    }
-    .price-badge-marker:hover, .price-badge-marker.active {
-      background: #00843D;
-      color: white;
-      transform: scale(1.1);
-    }
     .center-pin-pulse {
-      width: 22px;
-      height: 22px;
+      width: 24px;
+      height: 24px;
       border-radius: 50%;
-      background: #ef4444;
+      background: #059669;
       border: 3px solid white;
-      box-shadow: 0 0 0 rgba(239, 68, 68, 0.6);
+      box-shadow: 0 0 0 rgba(5, 150, 105, 0.6);
       animation: pulse-ring 2s infinite;
       cursor: grab;
     }
     @keyframes pulse-ring {
-      0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
-      70% { box-shadow: 0 0 0 16px rgba(239, 68, 68, 0); }
-      100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+      0% { box-shadow: 0 0 0 0 rgba(5, 150, 105, 0.7); }
+      70% { box-shadow: 0 0 0 18px rgba(5, 150, 105, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(5, 150, 105, 0); }
     }
     #map { z-index: 0 !important; isolation: isolate; }
   </style>
@@ -57,534 +43,449 @@
 
   <!-- TOP HEADER -->
   <header class="bg-white border-b border-slate-200 z-30 flex-none shadow-xs">
-    <div class="max-w-[1920px] mx-auto px-4 py-2.5 flex items-center justify-between gap-3">
+    <div class="max-w-[1920px] mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+      
+      <!-- Brand & Mode Pill -->
       <div class="flex items-center gap-3">
-        <div class="w-9 h-9 rounded-xl bg-emerald-600 flex items-center justify-center text-white shadow-sm">
-          <i data-lucide="radar" class="w-5 h-5"></i>
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-500 flex items-center justify-center text-white shadow-md shadow-emerald-500/20">
+          <i data-lucide="compass" class="w-5 h-5"></i>
         </div>
         <div>
           <div class="flex items-center gap-2">
             <h1 class="text-base font-bold text-slate-900 tracking-tight leading-none">GeelongRent<span class="text-emerald-600">Radar</span></h1>
-            <span class="bg-emerald-50 text-emerald-700 text-[10px] font-semibold px-2 py-0.5 rounded-full border border-emerald-200">Live Radius Sync</span>
+            <span class="bg-emerald-50 text-emerald-700 text-[10px] font-semibold px-2 py-0.5 rounded-full border border-emerald-200">Live Search Launcher</span>
           </div>
-          <p class="text-[11px] text-slate-500 mt-0.5">Click pin or run Live Sync to scan active radius</p>
+          <p class="text-[11px] text-slate-500 mt-0.5">Direct Real-Time Portal Query Generator</p>
         </div>
       </div>
 
-      <!-- Action Buttons -->
-      <div class="flex items-center gap-2">
-        <button id="liveSyncBtn" title="Sync real locations in current radius" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold transition active:scale-95 shadow-xs">
-          <i data-lucide="refresh-cw" id="syncSpinner" class="w-3.5 h-3.5"></i>
-          <span>Live Sync</span>
-        </button>
+      <!-- Quick Suburb Jump Dropdown & Reset -->
+      <div class="flex items-center flex-wrap gap-2">
+        <div class="flex items-center gap-1.5 bg-slate-100 px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs">
+          <span class="text-slate-500 font-medium text-[11px] flex items-center gap-1">
+            <i data-lucide="navigation" class="w-3.5 h-3.5 text-emerald-600"></i> Quick Jump:
+          </span>
+          <select id="quickSuburbSelect" class="bg-transparent font-semibold text-slate-800 text-xs focus:outline-none cursor-pointer">
+            <option value="-38.1499,144.3617,Geelong Central,3220">Geelong CBD (3220)</option>
+            <option value="-38.1432,144.3486,Geelong West,3218">Geelong West (3218)</option>
+            <option value="-38.1511,144.3392,Newtown,3220">Newtown (3220)</option>
+            <option value="-38.1762,144.3485,Belmont,3216">Belmont (3216)</option>
+            <option value="-38.1740,144.3210,Highton,3216">Highton (3216)</option>
+            <option value="-38.2045,144.3648,Charlemont,3217">Charlemont (3217)</option>
+            <option value="-38.1284,144.3352,Hamlyn Heights,3215">Hamlyn Heights (3215)</option>
+            <option value="-38.1560,144.3750,East Geelong,3219">East Geelong (3219)</option>
+            <option value="-38.1965,144.3385,Grovedale,3216">Grovedale (3216)</option>
+            <option value="-38.0167,144.4000,Lara,3212">Lara (3212)</option>
+            <option value="-38.3308,144.3211,Torquay,3228">Torquay (3228)</option>
+            <option value="-38.2685,144.5218,Ocean Grove,3226">Ocean Grove (3226)</option>
+          </select>
+        </div>
 
-        <button id="domainSearchBtn" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold transition shadow-xs">
-          <i data-lucide="external-link" class="w-3.5 h-3.5"></i>
-          <span>Domain Search</span>
-        </button>
-
-        <button id="reaSearchBtn" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold transition shadow-xs">
-          <i data-lucide="external-link" class="w-3.5 h-3.5"></i>
-          <span>REA Search</span>
-        </button>
-
-        <button id="openAddModalBtn" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold transition">
-          <i data-lucide="plus" class="w-3.5 h-3.5 text-emerald-400"></i>
-          <span>Track Address</span>
+        <button id="recenterBtn" title="Reset Pin to Central Geelong" class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 text-xs font-medium transition shadow-2xs">
+          <i data-lucide="crosshair" class="w-3.5 h-3.5 text-slate-500"></i>
+          <span>Reset Pin</span>
         </button>
       </div>
     </div>
   </header>
 
   <!-- SEARCH CONTROLS BAR -->
-  <section class="bg-white border-b border-slate-200 flex-none px-4 py-2.5 z-20">
+  <section class="bg-white border-b border-slate-200 flex-none px-4 py-2.5 z-20 shadow-xs">
     <div class="max-w-[1920px] mx-auto flex flex-wrap items-center justify-between gap-3">
-      <div class="flex items-center gap-3">
-        <div class="relative min-w-[240px]">
-          <div class="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none text-slate-400">
-            <i data-lucide="map-pin" class="w-3.5 h-3.5 text-emerald-600"></i>
-          </div>
-          <input type="text" id="centerLocationName" value="Geelong Central (Vic 3220)" readonly
-            class="bg-slate-100 border border-slate-200 text-slate-800 text-xs rounded-lg pl-8 pr-8 py-1.5 w-full font-semibold cursor-default">
-          <button id="recenterBtn" title="Reset Pin to Central Geelong" class="absolute inset-y-0 right-0 pr-2 flex items-center text-slate-400 hover:text-slate-600">
-            <i data-lucide="crosshair" class="w-3.5 h-3.5"></i>
-          </button>
-        </div>
-
-        <div class="flex items-center gap-1 bg-slate-100 p-1 rounded-lg border border-slate-200 text-xs">
-          <span class="text-slate-400 px-2 font-medium text-[11px]">Radius:</span>
-          <button class="radius-btn px-2.5 py-0.5 rounded font-semibold text-slate-700" data-radius="5">5km</button>
-          <button class="radius-btn px-2.5 py-0.5 rounded font-semibold text-slate-700" data-radius="10">10km</button>
-          <button class="radius-btn px-2.5 py-0.5 rounded font-semibold bg-emerald-600 text-white" data-radius="15">15km</button>
-          <button class="radius-btn px-2.5 py-0.5 rounded font-semibold text-slate-700" data-radius="30">30km</button>
-        </div>
-
-        <span class="text-[11px] text-slate-400 hidden xl:inline-flex items-center gap-1">
-          <i data-lucide="mouse-pointer-click" class="w-3 h-3 text-emerald-600"></i> Click anywhere on the map to shift search pin
+      
+      <!-- Radius Selector -->
+      <div class="flex items-center gap-2">
+        <span class="text-slate-400 font-medium text-[11px] flex items-center gap-1">
+          <i data-lucide="disc" class="w-3.5 h-3.5 text-emerald-600"></i> Search Ring:
         </span>
+        <div class="flex items-center gap-1 bg-slate-100 p-1 rounded-lg border border-slate-200 text-xs">
+          <button class="radius-btn px-2.5 py-1 rounded-md font-semibold transition text-slate-700" data-radius="5">5 km</button>
+          <button class="radius-btn px-2.5 py-1 rounded-md font-semibold transition text-slate-700" data-radius="10">10 km</button>
+          <button class="radius-btn px-2.5 py-1 rounded-md font-semibold transition bg-emerald-600 text-white shadow-2xs" data-radius="15">15 km</button>
+          <button class="radius-btn px-2.5 py-1 rounded-md font-semibold transition text-slate-700" data-radius="30">30 km</button>
+        </div>
       </div>
 
-      <div class="flex items-center gap-3">
-        <div class="flex items-center gap-2 bg-slate-50 px-3 py-1 rounded-lg border border-slate-200">
-          <span class="text-[10px] text-slate-500 font-medium">MAX RENT:</span>
-          <span class="font-bold text-slate-900 text-xs" id="rentDisplayVal">$950/wk</span>
-          <input type="range" id="rentSlider" min="300" max="1800" step="25" value="950" class="w-28 h-1.5 accent-emerald-600 cursor-pointer">
+      <!-- Live Search Criteria: Max Weekly Rent, Property Type, Bedrooms -->
+      <div class="flex flex-wrap items-center gap-3">
+        <div class="flex items-center gap-2 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200 text-xs">
+          <span class="text-[10px] text-slate-500 font-bold uppercase">Max Rent:</span>
+          <span class="font-bold text-slate-900" id="rentDisplayVal">$950/wk</span>
+          <input type="range" id="rentSlider" min="300" max="1800" step="25" value="950" class="w-28 sm:w-36 h-1.5 accent-emerald-600 cursor-pointer">
         </div>
 
-        <select id="typeFilter" class="bg-white border border-slate-200 text-xs font-medium text-slate-700 rounded-lg px-2 py-1.5">
-          <option value="all">All Types</option>
+        <select id="typeFilter" class="bg-white border border-slate-200 text-xs font-semibold text-slate-700 rounded-lg px-2.5 py-1.5 focus:ring-1 focus:ring-emerald-500 focus:outline-none">
+          <option value="all">All Property Types</option>
           <option value="House">House</option>
+          <option value="Townhouse">Townhouse</option>
           <option value="Apartment">Apartment</option>
           <option value="Unit">Unit</option>
         </select>
+
+        <select id="bedFilter" class="bg-white border border-slate-200 text-xs font-semibold text-slate-700 rounded-lg px-2.5 py-1.5 focus:ring-1 focus:ring-emerald-500 focus:outline-none">
+          <option value="all">Any Bedrooms</option>
+          <option value="1">1+ Bedrooms</option>
+          <option value="2">2+ Bedrooms</option>
+          <option value="3" selected>3+ Bedrooms</option>
+          <option value="4">4+ Bedrooms</option>
+        </select>
       </div>
+
     </div>
   </section>
 
-  <!-- WORKSPACE -->
+  <!-- MAIN WORKSPACE -->
   <main class="flex-1 flex flex-col md:flex-row overflow-hidden relative">
-    <!-- LISTINGS COLUMN -->
-    <section class="w-full md:w-[480px] lg:w-[540px] flex-none flex flex-col bg-white border-r border-slate-200 z-10">
-      <div class="px-4 py-2 bg-slate-50 border-b border-slate-200 flex items-center justify-between text-xs font-semibold text-slate-700">
-        <span id="resultsCount">0 Listings Within Radius</span>
-        <button id="purgeInactiveBtn" class="text-[11px] text-red-600 hover:underline flex items-center gap-1 font-medium">
-          <i data-lucide="trash-2" class="w-3 h-3"></i> Clear Current
-        </button>
+
+    <!-- LEFT LAUNCHER CONSOLE -->
+    <section class="w-full md:w-[460px] lg:w-[500px] flex-none flex flex-col bg-white border-r border-slate-200 z-10 overflow-y-auto p-4 sm:p-5 space-y-4">
+      
+      <!-- Current Target Location Card -->
+      <div class="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-2">
+        <div class="flex items-center justify-between">
+          <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-emerald-500"></span> Current Search Target
+          </span>
+          <span id="pinCoordsBadge" class="text-[10px] font-mono text-slate-500 bg-white px-2 py-0.5 rounded border border-slate-200">-38.150, 144.362</span>
+        </div>
+        <div>
+          <h2 id="resolvedLocationTitle" class="text-lg font-bold text-slate-900 leading-tight">Geelong Central</h2>
+          <p id="resolvedLocationSubtitle" class="text-xs text-emerald-700 font-semibold mt-0.5">Victoria 3220 • Radius: 15 km</p>
+        </div>
+        <p class="text-[11px] text-slate-500 leading-relaxed pt-1 border-t border-slate-200/60">
+          Click anywhere on the map or drag the pin. The launcher automatically encodes the exact suburb, postcode, and budget parameters into active searches.
+        </p>
       </div>
-      <div id="listingsContainer" class="flex-1 overflow-y-auto p-4 space-y-3"></div>
+
+      <!-- PRIMARY TARGET LAUNCH CARDS -->
+      <div class="space-y-3">
+        <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+          <i data-lucide="zap" class="w-4 h-4 text-emerald-600"></i> Launch Targeted Search
+        </h3>
+
+        <!-- Domain.com.au Card -->
+        <div class="p-4 rounded-2xl border border-emerald-200 bg-emerald-50/50 hover:bg-emerald-50 transition space-y-3">
+          <div class="flex items-start justify-between gap-2">
+            <div>
+              <div class="flex items-center gap-1.5">
+                <span class="font-bold text-slate-900 text-sm">Domain.com.au</span>
+                <span class="text-[10px] bg-emerald-700 text-white font-semibold px-2 py-0.2 rounded-full">Direct Suburb Query</span>
+              </div>
+              <p id="domainQueryPreview" class="text-[11px] text-slate-600 mt-1 line-clamp-1 font-mono">
+                /rent/geelong-vic-3220/?price=0-950&bedrooms=3
+              </p>
+            </div>
+            <div class="w-8 h-8 rounded-xl bg-emerald-700 text-white flex items-center justify-center flex-none">
+              <i data-lucide="arrow-up-right" class="w-4 h-4"></i>
+            </div>
+          </div>
+          <button id="openDomainBtn" class="w-full py-2.5 px-4 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 shadow-xs active:scale-98">
+            <span>Search This Suburb on Domain</span>
+            <i data-lucide="external-link" class="w-3.5 h-3.5"></i>
+          </button>
+        </div>
+
+        <!-- Realestate.com.au Card -->
+        <div class="p-4 rounded-2xl border border-rose-200 bg-rose-50/50 hover:bg-rose-50 transition space-y-3">
+          <div class="flex items-start justify-between gap-2">
+            <div>
+              <div class="flex items-center gap-1.5">
+                <span class="font-bold text-slate-900 text-sm">Realestate.com.au</span>
+                <span class="text-[10px] bg-rose-600 text-white font-semibold px-2 py-0.2 rounded-full">Direct Suburb Query</span>
+              </div>
+              <p id="reaQueryPreview" class="text-[11px] text-slate-600 mt-1 line-clamp-1 font-mono">
+                /rent/property-between-0-950-in-geelong,+vic+3220
+              </p>
+            </div>
+            <div class="w-8 h-8 rounded-xl bg-rose-600 text-white flex items-center justify-center flex-none">
+              <i data-lucide="arrow-up-right" class="w-4 h-4"></i>
+            </div>
+          </div>
+          <button id="openReaBtn" class="w-full py-2.5 px-4 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 shadow-xs active:scale-98">
+            <span>Search This Suburb on REA</span>
+            <i data-lucide="external-link" class="w-3.5 h-3.5"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- GREATER GEELONG REGION MULTI-SUBURB SEARCH -->
+      <div class="p-4 rounded-2xl border border-slate-200 bg-white space-y-2.5">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-bold text-slate-800">Greater Geelong & Surrounds</span>
+          <span class="text-[10px] text-slate-500 font-medium">Wide Area Mode</span>
+        </div>
+        <p class="text-[11px] text-slate-500 leading-relaxed">
+          Broaden the search across the entire Geelong metropolitan area and immediate surrounding suburbs within your chosen radius:
+        </p>
+        <div class="grid grid-cols-2 gap-2 pt-1">
+          <button id="openDomainWideBtn" class="py-2 px-3 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-semibold transition text-center flex items-center justify-center gap-1.5">
+            <span>Domain Region</span>
+            <i data-lucide="external-link" class="w-3 h-3 text-slate-400"></i>
+          </button>
+          <button id="openReaWideBtn" class="py-2 px-3 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-semibold transition text-center flex items-center justify-center gap-1.5">
+            <span>REA Region</span>
+            <i data-lucide="external-link" class="w-3 h-3 text-slate-400"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Active Query Spec Summary -->
+      <div class="p-3.5 rounded-xl bg-slate-100/70 border border-slate-200/80 text-[11px] space-y-1.5 text-slate-600">
+        <div class="font-bold text-slate-700 uppercase tracking-wider text-[10px]">Active Search Parameters</div>
+        <div class="flex justify-between">
+          <span class="text-slate-500">Max Budget:</span>
+          <span class="font-semibold text-slate-900" id="specRent">$950 per week</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-slate-500">Bedrooms:</span>
+          <span class="font-semibold text-slate-900" id="specBeds">3+ Beds</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-slate-500">Property Type:</span>
+          <span class="font-semibold text-slate-900" id="specType">All Types</span>
+        </div>
+      </div>
+
     </section>
 
-    <!-- MAP -->
+    <!-- RIGHT INTERACTIVE MAP -->
     <section class="flex-1 relative h-full bg-slate-100 z-0">
-      <div id="map" class="w-full h-full"></div>
-      
-      <div class="absolute top-4 left-4 z-[400] bg-white/95 backdrop-blur-xs px-3 py-1.5 rounded-lg shadow-sm border border-slate-200 text-xs flex items-center gap-2">
-        <span class="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse"></span>
-        <span id="centerPinCoordsLabel" class="font-medium text-slate-700">Pin: -38.150, 144.362</span>
+      <div id="map" class="w-full h-full z-0"></div>
+
+      <!-- Map Floating Helper Instructions -->
+      <div class="absolute bottom-6 right-6 z-[400] bg-white/95 backdrop-blur-md px-3.5 py-2 rounded-xl shadow-md border border-slate-200 text-xs text-slate-700 flex items-center gap-2">
+        <span class="w-2.5 h-2.5 rounded-full bg-emerald-600 inline-block"></span>
+        <span class="font-medium">Tap map to change target suburb & radius</span>
       </div>
     </section>
+
   </main>
 
-  <!-- TRACK PROPERTY MODAL -->
-  <div id="addModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-[9999] hidden flex items-center justify-center p-4">
-    <div class="bg-white rounded-2xl max-w-md w-full shadow-2xl p-5 border border-slate-200 space-y-3.5 text-xs">
-      <div class="flex items-center justify-between pb-2 border-b border-slate-100">
-        <h3 class="font-bold text-slate-900 text-sm">Add Property to Tracker</h3>
-        <button id="closeAddModalBtn" class="text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-4 h-4"></i></button>
-      </div>
-
-      <form id="trackPropertyForm" class="space-y-3">
-        <div>
-          <label class="block font-semibold text-slate-700 mb-1">Full Street Address</label>
-          <div class="flex gap-2">
-            <input type="text" id="inputAddress" required placeholder="e.g. 14 Mercer St, Geelong" class="flex-1 border rounded-lg px-2.5 py-1.5 text-xs">
-            <button type="button" id="lookupCoordsBtn" class="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-lg text-[11px] flex items-center gap-1">
-              <i data-lucide="map-pin" class="w-3 h-3"></i> Locate
-            </button>
-          </div>
-          <p id="geoStatus" class="text-[10px] text-slate-400 mt-1">Resolves coordinates via live map service.</p>
-        </div>
-
-        <div class="grid grid-cols-2 gap-2">
-          <div>
-            <label class="block font-semibold text-slate-700 mb-1">Weekly Rent ($)</label>
-            <input type="number" id="inputRent" required placeholder="550" class="w-full border rounded-lg px-2.5 py-1.5 text-xs">
-          </div>
-          <div>
-            <label class="block font-semibold text-slate-700 mb-1">Property Type</label>
-            <select id="inputType" class="w-full border rounded-lg px-2 py-1.5 text-xs">
-              <option value="House">House</option>
-              <option value="Apartment">Apartment</option>
-              <option value="Unit">Unit</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="grid grid-cols-2 gap-2">
-          <div>
-            <label class="block font-semibold text-slate-700 mb-1">Bedrooms</label>
-            <input type="number" id="inputBeds" value="3" min="1" max="8" class="w-full border rounded-lg px-2.5 py-1.5 text-xs">
-          </div>
-          <div>
-            <label class="block font-semibold text-slate-700 mb-1">Status</label>
-            <select id="inputStatus" class="w-full border rounded-lg px-2 py-1.5 text-xs">
-              <option value="active">Active Listing</option>
-              <option value="inactive">Expired / Leased</option>
-            </select>
-          </div>
-        </div>
-
-        <input type="hidden" id="resolvedLat" value="-38.1499">
-        <input type="hidden" id="resolvedLng" value="144.3617">
-
-        <div class="flex justify-end gap-2 pt-2 border-t">
-          <button type="button" id="cancelTrackBtn" class="px-3 py-1.5 rounded-lg border text-slate-600">Cancel</button>
-          <button type="submit" class="px-3.5 py-1.5 rounded-lg bg-emerald-600 text-white font-semibold">Save</button>
-        </div>
-      </form>
-    </div>
-  </div>
-
   <script>
-    const GEELONG_COORDS = { lat: -38.1499, lng: 144.3617 };
-    
-    let state = {
-      center: { ...GEELONG_COORDS },
+    const GEELONG_CBD = { lat: -38.1499, lng: 144.3617, suburb: 'Geelong', postcode: '3220' };
+
+    const state = {
+      lat: GEELONG_CBD.lat,
+      lng: GEELONG_CBD.lng,
+      suburb: GEELONG_CBD.suburb,
+      postcode: GEELONG_CBD.postcode,
       radiusKm: 15,
       maxWeeklyRent: 950,
       selectedType: 'all',
-      properties: JSON.parse(localStorage.getItem('tracked_rentals') || '[]'),
+      selectedBeds: '3',
       map: null,
       radiusCircle: null,
-      centerPinMarker: null,
-      markers: []
+      pinMarker: null
     };
 
-    function buildPortalSearchUrl(portal, addressQuery = null) {
-      const maxRent = state.maxWeeklyRent;
-      if (portal === 'domain') {
-        if (addressQuery) {
-          return `https://www.domain.com.au/rent/?street-name=${encodeURIComponent(addressQuery.trim())}&price=0-${maxRent}`;
-        }
-        return `https://www.domain.com.au/rent/geelong-vic-3220/?price=0-${maxRent}&distance=${state.radiusKm}`;
-      } else {
-        if (addressQuery) {
-          return `https://www.realestate.com.au/rent/property-between-0-${maxRent}-in-${encodeURIComponent(addressQuery.trim())}/list-1`;
-        }
-        return `https://www.realestate.com.au/rent/property-between-0-${maxRent}-in-geelong,+vic+3220/list-1`;
+    /**
+     * DYNAMIC PORTAL SEARCH URL BUILDERS
+     * Formulates strict, working search URLs directly for Domain and Realestate.com.au
+     */
+    function buildDomainUrl(isWide = false) {
+      const maxPrice = state.maxWeeklyRent;
+      const bedQuery = state.selectedBeds !== 'all' ? `&bedrooms=${state.selectedBeds}` : '';
+      
+      let typeQuery = '';
+      if (state.selectedType !== 'all') {
+        typeQuery = `&ptype=${state.selectedType.toLowerCase()}`;
       }
+
+      if (isWide) {
+        return `https://www.domain.com.au/rent/geelong-vic-3220/?price=0-${maxPrice}&distance=${state.radiusKm}${bedQuery}${typeQuery}`;
+      }
+
+      const slug = state.suburb.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-');
+      const pc = state.postcode || '3220';
+      return `https://www.domain.com.au/rent/${slug}-vic-${pc}/?price=0-${maxPrice}${bedQuery}${typeQuery}`;
     }
 
-    function calculateDistance(lat1, lon1, lat2, lon2) {
-      const R = 6371;
-      const dLat = (lat2 - lat1) * Math.PI / 180;
-      const dLon = (lon2 - lon1) * Math.PI / 180;
-      const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) * Math.sin(dLon/2)**2;
-      return (R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)))).toFixed(1);
+    function buildReaUrl(isWide = false) {
+      const maxPrice = state.maxWeeklyRent;
+      const bedQuery = state.selectedBeds !== 'all' ? `&numBeds=${state.selectedBeds}` : '';
+
+      if (isWide) {
+        return `https://www.realestate.com.au/rent/property-between-0-${maxPrice}-in-geelong,+vic+3220;+surrounding-suburbs/list-1?activeSort=list-date${bedQuery}`;
+      }
+
+      const subEncoded = encodeURIComponent(state.suburb.toLowerCase().trim());
+      const pc = state.postcode ? `+${state.postcode}` : '';
+      return `https://www.realestate.com.au/rent/property-between-0-${maxPrice}-in-${subEncoded},+vic${pc}/list-1?activeSort=list-date${bedQuery}`;
     }
 
-    function setMapPin(lat, lng, labelText = null) {
-      state.center = { lat, lng };
+    function updatePreviewLabels() {
+      document.getElementById('resolvedLocationTitle').textContent = state.suburb;
+      document.getElementById('resolvedLocationSubtitle').textContent = `Victoria ${state.postcode} • Radius: ${state.radiusKm} km`;
+      document.getElementById('pinCoordsBadge').textContent = `${state.lat.toFixed(3)}, ${state.lng.toFixed(3)}`;
 
-      if (state.centerPinMarker) {
-        state.centerPinMarker.setLatLng([lat, lng]);
+      const domainUrl = buildDomainUrl(false);
+      const reaUrl = buildReaUrl(false);
+
+      document.getElementById('domainQueryPreview').textContent = domainUrl.replace('https://www.domain.com.au', '');
+      document.getElementById('reaQueryPreview').textContent = reaUrl.replace('https://www.realestate.com.au', '');
+
+      document.getElementById('specRent').textContent = `$${state.maxWeeklyRent} per week`;
+      document.getElementById('specBeds').textContent = state.selectedBeds === 'all' ? 'Any Bedrooms' : `${state.selectedBeds}+ Beds`;
+      document.getElementById('specType').textContent = state.selectedType === 'all' ? 'All Types' : state.selectedType;
+    }
+
+    /**
+     * REVERSE GEOCODING (Live OpenStreetMap Nominatim)
+     * Queries the coordinates in real-time when the map is clicked
+     */
+    async function reverseGeocodeLocation(lat, lng) {
+      try {
+        const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
+        if (!response.ok) throw new Error('Reverse geocoding unavailable');
+        const data = await response.json();
+
+        if (data && data.address) {
+          const sub = data.address.suburb || data.address.town || data.address.village || data.address.neighbourhood || data.address.city || 'Geelong';
+          const pc = data.address.postcode || '3220';
+          state.suburb = sub;
+          state.postcode = pc;
+        }
+      } catch (err) {
+        // Fallback default
+        state.suburb = 'Geelong';
+        state.postcode = '3220';
+      }
+      updatePreviewLabels();
+    }
+
+    function setPinAndRadius(lat, lng, suburb = null, postcode = null) {
+      state.lat = lat;
+      state.lng = lng;
+
+      if (suburb) state.suburb = suburb;
+      if (postcode) state.postcode = postcode;
+
+      // Update Pin Marker
+      if (state.pinMarker) {
+        state.pinMarker.setLatLng([lat, lng]);
       } else {
         const pinIcon = L.divIcon({
           className: '',
           html: '<div class="center-pin-pulse"></div>',
-          iconSize: [22, 22],
-          iconAnchor: [11, 11]
+          iconSize: [24, 24],
+          iconAnchor: [12, 12]
         });
-        state.centerPinMarker = L.marker([lat, lng], { icon: pinIcon, zIndexOffset: 1000 }).addTo(state.map);
+        state.pinMarker = L.marker([lat, lng], { icon: pinIcon, zIndexOffset: 1000 }).addTo(state.map);
       }
 
+      // Update Circle
       if (state.radiusCircle) {
         state.radiusCircle.setLatLng([lat, lng]);
         state.radiusCircle.setRadius(state.radiusKm * 1000);
       } else {
         state.radiusCircle = L.circle([lat, lng], {
           radius: state.radiusKm * 1000,
-          color: '#00843D',
+          color: '#059669',
           fillColor: '#10b981',
           fillOpacity: 0.08,
-          weight: 2
+          weight: 2,
+          dashArray: '6, 6'
         }).addTo(state.map);
       }
 
-      document.getElementById('centerPinCoordsLabel').textContent = `Pin: ${lat.toFixed(3)}, ${lng.toFixed(3)}`;
-      
-      if (labelText) {
-        document.getElementById('centerLocationName').value = labelText;
+      if (!suburb) {
+        reverseGeocodeLocation(lat, lng);
       } else {
-        document.getElementById('centerLocationName').value = `Pin (${lat.toFixed(3)}, ${lng.toFixed(3)})`;
-        fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`)
-          .then(r => r.json())
-          .then(data => {
-            if (data && data.address) {
-              const sub = data.address.suburb || data.address.town || data.address.village || data.address.city;
-              if (sub) document.getElementById('centerLocationName').value = `${sub} (Pin)`;
-            }
-          })
-          .catch(() => {});
-      }
-
-      renderListings();
-    }
-
-    /**
-     * LIVE SYNC: Queries OpenStreetMap live geo services for genuine residential roads & points
-     * around the active pin radius, generates verifiable search targets, and updates UI.
-     */
-    async function executeLiveSync() {
-      const spinner = document.getElementById('syncSpinner');
-      spinner.classList.add('animate-spin');
-
-      const lat = state.center.lat;
-      const lon = state.center.lng;
-      const radiusMeters = state.radiusKm * 1000;
-
-      // Overpass QL query: fetches real residential ways/points within the circle
-      const query = `[out:json][timeout:10];
-        (
-          way["highway"~"residential|tertiary|secondary"]["name"](around:${radiusMeters},${lat},${lon});
-        );
-        out center 15;`;
-
-      try {
-        const response = await fetch('https://overpass-api.de/api/interpreter', {
-          method: 'POST',
-          body: query
-        });
-
-        if (!response.ok) throw new Error('Network issue querying geo service');
-        const data = await response.json();
-
-        if (data && data.elements && data.elements.length > 0) {
-          const newProperties = [];
-          const seenNames = new Set();
-
-          data.elements.forEach((el, index) => {
-            const streetName = el.tags && el.tags.name;
-            const ptLat = el.center ? el.center.lat : el.lat;
-            const ptLon = el.center ? el.center.lon : el.lon;
-
-            if (streetName && !seenNames.has(streetName) && ptLat && ptLon) {
-              seenNames.add(streetName);
-              const streetNum = ((index * 7 + 12) % 95) + 1;
-              const fullAddress = `${streetNum} ${streetName}`;
-              
-              // Realistic rent within user's filtered budget
-              const rent = Math.min(state.maxWeeklyRent, 420 + ((index * 35) % 360));
-              const types = ['House', 'Townhouse', 'Unit', 'Apartment'];
-              const type = types[index % types.length];
-
-              newProperties.push({
-                id: 'sync-' + Date.now() + '-' + index,
-                address: fullAddress,
-                rent: rent,
-                type: type,
-                beds: (index % 3) + 2,
-                lat: ptLat,
-                lng: ptLon,
-                status: 'active'
-              });
-            }
-          });
-
-          if (newProperties.length > 0) {
-            state.properties = newProperties;
-            localStorage.setItem('tracked_rentals', JSON.stringify(state.properties));
-          }
-        }
-      } catch (err) {
-        console.warn('Live query fallback used:', err);
-        // Fallback: derive 6 radial positions around the current center pin
-        const fallback = [];
-        const angles = [0, 60, 120, 180, 240, 300];
-        angles.forEach((deg, idx) => {
-          const rad = (deg * Math.PI) / 180;
-          const distOffset = (state.radiusKm * 0.4) / 111; // degrees approx
-          fallback.push({
-            id: 'sync-fb-' + idx,
-            address: `${idx * 14 + 8} Surrounding Way`,
-            rent: Math.min(state.maxWeeklyRent, 450 + idx * 40),
-            type: idx % 2 === 0 ? 'House' : 'Unit',
-            beds: (idx % 3) + 2,
-            lat: lat + distOffset * Math.cos(rad),
-            lng: lon + distOffset * Math.sin(rad),
-            status: 'active'
-          });
-        });
-        state.properties = fallback;
-        localStorage.setItem('tracked_rentals', JSON.stringify(state.properties));
-      } finally {
-        spinner.classList.remove('animate-spin');
-        renderListings();
+        updatePreviewLabels();
       }
     }
 
     function initMap() {
-      state.map = L.map('map', { zoomControl: false }).setView([state.center.lat, state.center.lng], 12);
+      state.map = L.map('map', { zoomControl: false }).setView([state.lat, state.lng], 12);
       L.control.zoom({ position: 'topright' }).addTo(state.map);
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(state.map);
+      
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; OpenStreetMap contributors'
+      }).addTo(state.map);
 
-      setMapPin(state.center.lat, state.center.lng, 'Geelong Central (Vic 3220)');
+      setPinAndRadius(state.lat, state.lng, state.suburb, state.postcode);
 
+      // CLICK MAP TO DROP PIN ANYWHERE
       state.map.on('click', (e) => {
-        setMapPin(e.latlng.lat, e.latlng.lng);
+        setPinAndRadius(e.latlng.lat, e.latlng.lng);
       });
     }
 
-    function renderListings() {
-      const container = document.getElementById('listingsContainer');
-      container.innerHTML = '';
-      state.markers.forEach(m => state.map.removeLayer(m));
-      state.markers = [];
-
-      const activeListings = state.properties.filter(p => {
-        const dist = calculateDistance(state.center.lat, state.center.lng, p.lat, p.lng);
-        const inRadius = dist <= state.radiusKm;
-        const inRent = p.rent <= state.maxWeeklyRent;
-        const inType = state.selectedType === 'all' || p.type === state.selectedType;
-        const isActive = p.status === 'active';
-        return inRadius && inRent && inType && isActive;
-      });
-
-      document.getElementById('resultsCount').textContent = `${activeListings.length} Active Listings Within ${state.radiusKm}km`;
-
-      if (activeListings.length === 0) {
-        container.innerHTML = `
-          <div class="py-12 text-center text-slate-400">
-            <i data-lucide="inbox" class="w-8 h-8 mx-auto mb-2 opacity-50"></i>
-            <p class="text-xs font-semibold text-slate-600">No listings loaded for this radius.</p>
-            <p class="text-[11px] text-slate-400 mt-1 max-w-xs mx-auto">Click <b>Live Sync</b> at top right to populate locations around this pin.</p>
-            <button onclick="executeLiveSync()" class="mt-3 px-3 py-1.5 bg-emerald-50 text-emerald-700 rounded-lg text-xs font-semibold hover:bg-emerald-100 border border-emerald-200">
-              Run Live Sync Now
-            </button>
-          </div>
-        `;
-        lucide.createIcons();
-        return;
-      }
-
-      activeListings.forEach(prop => {
-        const dist = calculateDistance(state.center.lat, state.center.lng, prop.lat, prop.lng);
-        const domainUrl = buildPortalSearchUrl('domain', prop.address);
-        const reaUrl = buildPortalSearchUrl('rea', prop.address);
-
-        const card = document.createElement('div');
-        card.className = 'p-3.5 bg-white border border-slate-200 rounded-xl shadow-xs space-y-2';
-        card.innerHTML = `
-          <div class="flex items-start justify-between">
-            <div>
-              <div class="font-bold text-slate-900 text-sm">$${prop.rent} <span class="text-xs font-normal text-slate-500">/ week</span></div>
-              <div class="font-semibold text-slate-700 text-xs mt-0.5">${prop.address}</div>
-            </div>
-            <span class="text-[10px] bg-slate-100 font-bold px-2 py-0.5 rounded text-slate-600 border">${dist} km</span>
-          </div>
-
-          <div class="flex items-center gap-3 text-xs text-slate-500">
-            <span>${prop.type}</span> • <span>${prop.beds} Beds</span>
-          </div>
-
-          <div class="flex items-center gap-2 pt-1 border-t border-slate-100">
-            <a href="${domainUrl}" target="_blank" rel="noopener noreferrer" 
-               class="flex-1 py-1.5 px-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-lg text-[11px] font-semibold text-center flex items-center justify-center gap-1">
-              <span>Domain Query</span> <i data-lucide="external-link" class="w-2.5 h-2.5"></i>
-            </a>
-            <a href="${reaUrl}" target="_blank" rel="noopener noreferrer" 
-               class="flex-1 py-1.5 px-2 bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-200 rounded-lg text-[11px] font-semibold text-center flex items-center justify-center gap-1">
-              <span>REA Query</span> <i data-lucide="external-link" class="w-2.5 h-2.5"></i>
-            </a>
-            <button onclick="markInactive('${prop.id}')" title="Mark as inactive / expired" class="p-1.5 text-slate-400 hover:text-red-600 rounded">
-              <i data-lucide="archive" class="w-3.5 h-3.5"></i>
-            </button>
-          </div>
-        `;
-        container.appendChild(card);
-
-        const badge = L.divIcon({
-          className: '',
-          html: `<div class="price-badge-marker">$${prop.rent}</div>`,
-          iconSize: [50, 22]
-        });
-        const marker = L.marker([prop.lat, prop.lng], { icon: badge }).addTo(state.map);
-        state.markers.push(marker);
-      });
-
-      lucide.createIcons();
-    }
-
-    window.markInactive = function(id) {
-      state.properties = state.properties.map(p => p.id === id ? { ...p, status: 'inactive' } : p);
-      localStorage.setItem('tracked_rentals', JSON.stringify(state.properties));
-      renderListings();
-    };
-
-    function setupEvents() {
+    function setupEventListeners() {
+      // Radius Selector Buttons
       document.querySelectorAll('.radius-btn').forEach(btn => {
         btn.addEventListener('click', () => {
           document.querySelectorAll('.radius-btn').forEach(b => {
-            b.classList.remove('bg-emerald-600', 'text-white');
+            b.classList.remove('bg-emerald-600', 'text-white', 'shadow-2xs');
             b.classList.add('text-slate-700');
           });
-          btn.classList.add('bg-emerald-600', 'text-white');
+          btn.classList.add('bg-emerald-600', 'text-white', 'shadow-2xs');
+          btn.classList.remove('text-slate-700');
+
           state.radiusKm = parseInt(btn.dataset.radius, 10);
-          setMapPin(state.center.lat, state.center.lng);
+          state.radiusCircle.setRadius(state.radiusKm * 1000);
+          updatePreviewLabels();
         });
       });
 
-      document.getElementById('recenterBtn').addEventListener('click', () => {
-        setMapPin(GEELONG_COORDS.lat, GEELONG_COORDS.lng, 'Geelong Central (Vic 3220)');
-        state.map.flyTo([GEELONG_COORDS.lat, GEELONG_COORDS.lng], 13);
+      // Quick Suburb Jump Select
+      document.getElementById('quickSuburbSelect').addEventListener('change', (e) => {
+        const [latStr, lngStr, sub, pc] = e.target.value.split(',');
+        const lat = parseFloat(latStr);
+        const lng = parseFloat(lngStr);
+        setPinAndRadius(lat, lng, sub, pc);
+        state.map.flyTo([lat, lng], 13, { duration: 0.8 });
       });
 
-      document.getElementById('rentSlider').addEventListener('input', (e) => {
+      // Recenter Reset
+      document.getElementById('recenterBtn').addEventListener('click', () => {
+        setPinAndRadius(GEELONG_CBD.lat, GEELONG_CBD.lng, GEELONG_CBD.suburb, GEELONG_CBD.postcode);
+        state.map.flyTo([GEELONG_CBD.lat, GEELONG_CBD.lng], 12);
+        document.getElementById('quickSuburbSelect').selectedIndex = 0;
+      });
+
+      // Max Rent Slider
+      const rentSlider = document.getElementById('rentSlider');
+      rentSlider.addEventListener('input', (e) => {
         state.maxWeeklyRent = parseInt(e.target.value, 10);
         document.getElementById('rentDisplayVal').textContent = `$${state.maxWeeklyRent}/wk`;
-        renderListings();
+        updatePreviewLabels();
       });
 
+      // Type & Beds Filters
       document.getElementById('typeFilter').addEventListener('change', (e) => {
         state.selectedType = e.target.value;
-        renderListings();
+        updatePreviewLabels();
       });
 
-      document.getElementById('domainSearchBtn').addEventListener('click', () => {
-        window.open(buildPortalSearchUrl('domain'), '_blank');
-      });
-      document.getElementById('reaSearchBtn').addEventListener('click', () => {
-        window.open(buildPortalSearchUrl('rea'), '_blank');
+      document.getElementById('bedFilter').addEventListener('change', (e) => {
+        state.selectedBeds = e.target.value;
+        updatePreviewLabels();
       });
 
-      // Live Sync Button Hooked directly to executeLiveSync
-      document.getElementById('liveSyncBtn').addEventListener('click', executeLiveSync);
-
-      document.getElementById('purgeInactiveBtn').addEventListener('click', () => {
-        state.properties = [];
-        localStorage.removeItem('tracked_rentals');
-        renderListings();
+      // External Launch Buttons
+      document.getElementById('openDomainBtn').addEventListener('click', () => {
+        window.open(buildDomainUrl(false), '_blank', 'noopener,noreferrer');
       });
 
-      const modal = document.getElementById('addModal');
-      document.getElementById('openAddModalBtn').addEventListener('click', () => {
-        document.getElementById('resolvedLat').value = state.center.lat;
-        document.getElementById('resolvedLng').value = state.center.lng;
-        modal.classList.remove('hidden');
+      document.getElementById('openReaBtn').addEventListener('click', () => {
+        window.open(buildReaUrl(false), '_blank', 'noopener,noreferrer');
       });
-      document.getElementById('closeAddModalBtn').addEventListener('click', () => modal.classList.add('hidden'));
-      document.getElementById('cancelTrackBtn').addEventListener('click', () => modal.classList.add('hidden'));
 
-      document.getElementById('trackPropertyForm').addEventListener('submit', (e) => {
-        e.preventDefault();
-        const newProperty = {
-          id: 'prop-' + Date.now(),
-          address: document.getElementById('inputAddress').value.trim(),
-          rent: parseInt(document.getElementById('inputRent').value, 10),
-          type: document.getElementById('inputType').value,
-          beds: parseInt(document.getElementById('inputBeds').value, 10),
-          status: document.getElementById('inputStatus').value,
-          lat: parseFloat(document.getElementById('resolvedLat').value),
-          lng: parseFloat(document.getElementById('resolvedLng').value)
-        };
+      document.getElementById('openDomainWideBtn').addEventListener('click', () => {
+        window.open(buildDomainUrl(true), '_blank', 'noopener,noreferrer');
+      });
 
-        state.properties.push(newProperty);
-        localStorage.setItem('tracked_rentals', JSON.stringify(state.properties));
-        renderListings();
-        modal.classList.add('hidden');
-        document.getElementById('trackPropertyForm').reset();
+      document.getElementById('openReaWideBtn').addEventListener('click', () => {
+        window.open(buildReaUrl(true), '_blank', 'noopener,noreferrer');
       });
     }
 
-    window.onload = () => {
+    window.onload = function() {
       initMap();
-      setupEvents();
-      // If empty on start, trigger sync automatically to populate the circle
-      if (state.properties.length === 0) {
-        executeLiveSync();
-      } else {
-        renderListings();
-      }
+      setupEventListeners();
+      updatePreviewLabels();
       lucide.createIcons();
     };
   </script>
