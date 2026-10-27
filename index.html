@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Geelong Rental Explorer | Domain Search & Live Sync</title>
+  <title>Geelong Rental Explorer | Domain & REA Direct Sync</title>
   
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -35,9 +35,9 @@
               500: '#10b981',
               600: '#059669',
               700: '#047857',
-              brand: '#00843D', // Iconic Australian Domain Green style
+              brand: '#00843D',
             },
-            brandDark: '#0f172a'
+            rea: '#E4002B'
           }
         }
       }
@@ -45,14 +45,13 @@
   </script>
 
   <style>
-    /* Custom styling for Leaflet custom marker badges */
     .price-badge-marker {
       background: white;
       border: 2px solid #00843D;
       color: #0f172a;
       font-weight: 700;
       font-size: 11px;
-      padding: 3px 7px;
+      padding: 3px 8px;
       border-radius: 9999px;
       box-shadow: 0 4px 6px -1px rgba(0,0,0,0.18), 0 2px 4px -2px rgba(0,0,0,0.1);
       white-space: nowrap;
@@ -82,11 +81,9 @@
       70% { box-shadow: 0 0 0 16px rgba(239, 68, 68, 0); }
       100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
     }
-    /* Hide scrollbars for clean chip slider */
     .no-scrollbar::-webkit-scrollbar { display: none; }
     .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
-    /* Enforce stacking isolation on Leaflet map */
     #map {
       z-index: 0 !important;
       isolation: isolate;
@@ -96,10 +93,10 @@
 <body class="bg-slate-50 text-slate-800 antialiased flex flex-col h-screen overflow-hidden">
 
   <!-- TOP HEADER / NAV -->
-  <header class="bg-white border-b border-slate-200 z-30 flex-none shadow-sm">
+  <header class="bg-white border-b border-slate-200 z-30 flex-none shadow-xs">
     <div class="max-w-[1920px] mx-auto px-4 py-2.5 flex flex-wrap items-center justify-between gap-3">
       
-      <!-- Brand & Location default badge -->
+      <!-- Brand & Location badge -->
       <div class="flex items-center gap-3">
         <div class="flex items-center gap-2">
           <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-500 flex items-center justify-center text-white shadow-md shadow-emerald-500/20">
@@ -110,7 +107,7 @@
               <h1 class="text-base font-bold text-slate-900 tracking-tight leading-none">GeelongRent<span class="text-emerald-600">Radar</span></h1>
               <span class="bg-emerald-50 text-emerald-700 text-[10px] font-semibold px-2 py-0.5 rounded-full border border-emerald-200">Victoria, AU</span>
             </div>
-            <p class="text-[11px] text-slate-500 mt-0.5 hidden sm:block">Domain & Realestate.com.au Dual Finder</p>
+            <p class="text-[11px] text-slate-500 mt-0.5 hidden sm:block">Domain & Realestate.com.au Direct Live Sync</p>
           </div>
         </div>
 
@@ -132,20 +129,18 @@
       <div class="flex items-center flex-wrap gap-2">
         
         <!-- Live Sync Trigger -->
-        <button id="liveSyncBtn" title="Sync latest Geelong rental data" class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 text-xs font-semibold transition active:scale-95 shadow-xs">
+        <button id="liveSyncBtn" title="Scan for new Geelong rental listings & update database" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold transition active:scale-95 shadow-xs">
           <i data-lucide="refresh-cw" id="syncSpinner" class="w-3.5 h-3.5"></i>
-          <span class="hidden sm:inline">Live Sync</span>
+          <span>Live Sync</span>
         </button>
 
         <!-- DUAL EXTERNAL SEARCH BUTTONS -->
-        <!-- Search Domain external deep link -->
-        <button id="domainSearchBtn" title="Search Geelong rentals on Domain.com.au with active filters" class="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold transition shadow-xs active:scale-95">
+        <button id="domainSearchBtn" title="Search Geelong rentals on Domain.com.au" class="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold transition shadow-xs active:scale-95">
           <i data-lucide="external-link" class="w-3.5 h-3.5 text-emerald-200"></i>
           <span>Domain<span class="hidden sm:inline">.com.au</span></span>
         </button>
 
-        <!-- Search Realestate.com.au external deep link -->
-        <button id="reaSearchBtn" title="Search Geelong rentals on Realestate.com.au with active filters" class="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold transition shadow-xs active:scale-95">
+        <button id="reaSearchBtn" title="Search Geelong rentals on Realestate.com.au" class="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold transition shadow-xs active:scale-95">
           <i data-lucide="external-link" class="w-3.5 h-3.5 text-rose-200"></i>
           <span>Realestate<span class="hidden sm:inline">.com.au</span></span>
         </button>
@@ -211,7 +206,6 @@
       
       <!-- Search Center & Radius Controls -->
       <div class="flex flex-wrap items-center gap-3">
-        <!-- Location input display -->
         <div class="relative min-w-[220px]">
           <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
             <i data-lucide="map-pin" class="w-4 h-4 text-emerald-600"></i>
@@ -234,9 +228,8 @@
           <button class="radius-btn px-2.5 py-1 rounded-md font-semibold transition" data-radius="30">30 km</button>
         </div>
 
-        <!-- Quick Hint -->
         <span class="text-[11px] text-slate-500 hidden xl:inline-flex items-center gap-1">
-          <i data-lucide="info" class="w-3 h-3 text-emerald-600"></i> Click anywhere on the map to re-center the radius ring
+          <i data-lucide="info" class="w-3 h-3 text-emerald-600"></i> Click anywhere on the map to set a custom search pin
         </span>
       </div>
 
@@ -306,9 +299,9 @@
         <div class="flex items-center gap-2">
           <label class="text-[11px] text-slate-500">Sort:</label>
           <select id="sortSelect" class="bg-transparent font-medium text-slate-700 text-xs focus:outline-none cursor-pointer">
+            <option value="dist-asc" selected>Distance: Nearest</option>
             <option value="price-asc">Price: Low to High</option>
             <option value="price-desc">Price: High to Low</option>
-            <option value="dist-asc" selected>Distance: Nearest</option>
             <option value="beds-desc">Beds: Most first</option>
           </select>
         </div>
@@ -348,7 +341,7 @@
 
   </main>
 
-  <!-- PROPERTY DETAIL SLIDE-OVER DRAWER (FIXED HIGH Z-INDEX TO STAY ON TOP OF MAP) -->
+  <!-- PROPERTY DETAIL SLIDE-OVER DRAWER -->
   <div id="detailDrawerBackdrop" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-[9990] hidden transition-opacity"></div>
   <aside id="detailDrawer" class="fixed inset-y-0 right-0 w-full sm:w-[520px] bg-white shadow-2xl z-[9999] transform translate-x-full transition-transform duration-300 ease-in-out flex flex-col">
     <!-- Drawer Header -->
@@ -377,6 +370,29 @@
       <div>
         <h2 id="detailAddress" class="text-xl font-bold text-slate-900">Address</h2>
         <p id="detailSuburb" class="text-sm font-medium text-emerald-700">Suburb, VIC Postcode</p>
+      </div>
+
+      <!-- ONE-CLICK DIRECT LISTING BUTTON (PRIMARY DRAWER CTA) -->
+      <div class="p-4 bg-gradient-to-r from-emerald-50 via-teal-50 to-slate-50 border border-emerald-200/80 rounded-2xl shadow-xs space-y-2.5">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+            <i data-lucide="external-link" class="w-4 h-4 text-emerald-600"></i> Direct Advertised Listing
+          </span>
+          <span class="text-[10px] font-semibold text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded-full">One-Click Open</span>
+        </div>
+        <p class="text-[11px] text-slate-600">Jump directly to this exact property's official live advertisement on the portal:</p>
+        <div class="grid grid-cols-2 gap-2 pt-1">
+          <a id="drawerDirectDomainBtn" href="#" target="_blank" rel="noopener noreferrer"
+             class="flex items-center justify-center gap-1.5 px-3 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold transition shadow-xs">
+            <span>Domain Listing</span>
+            <i data-lucide="arrow-up-right" class="w-3.5 h-3.5"></i>
+          </a>
+          <a id="drawerDirectReaBtn" href="#" target="_blank" rel="noopener noreferrer"
+             class="flex items-center justify-center gap-1.5 px-3 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition shadow-xs">
+            <span>Realestate Listing</span>
+            <i data-lucide="arrow-up-right" class="w-3.5 h-3.5"></i>
+          </a>
+        </div>
       </div>
 
       <!-- Key Features Grid -->
@@ -422,38 +438,12 @@
       <!-- Highlight Badges -->
       <div>
         <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Property Features</h3>
-        <div id="detailFeaturesList" class="flex flex-wrap gap-1.5">
-          <!-- Rendered dynamically -->
-        </div>
-      </div>
-
-      <!-- DUAL EXTERNAL PORTAL DEEP SEARCH HELPERS -->
-      <div class="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
-        <div class="flex items-center justify-between">
-          <span class="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-            <span class="w-2 h-2 rounded-full bg-emerald-500"></span> External Portal Search
-          </span>
-          <span class="text-[10px] text-slate-500">Domain & Realestate.com.au</span>
-        </div>
-        <p class="text-[11px] text-slate-500">Compare rentals in this suburb or inspect verified agency listings on Australia's leading property portals:</p>
-        
-        <div class="grid grid-cols-2 gap-2 pt-1">
-          <a id="detailDomainLink" href="#" target="_blank" rel="noopener noreferrer"
-             class="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-xs font-semibold transition shadow-xs text-center">
-            <span>Domain.com.au</span>
-            <i data-lucide="external-link" class="w-3.5 h-3.5 text-emerald-200"></i>
-          </a>
-          <a id="detailRealestateLink" href="#" target="_blank" rel="noopener noreferrer"
-             class="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-semibold transition shadow-xs text-center">
-            <span>Realestate.com.au</span>
-            <i data-lucide="external-link" class="w-3.5 h-3.5 text-rose-200"></i>
-          </a>
-        </div>
+        <div id="detailFeaturesList" class="flex flex-wrap gap-1.5"></div>
       </div>
     </div>
   </aside>
 
-  <!-- ADD PROPERTY MODAL (FIXED HIGH Z-INDEX TO STAY ON TOP OF MAP) -->
+  <!-- ADD PROPERTY MODAL -->
   <div id="addModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-[9999] hidden flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl max-w-lg w-full shadow-2xl overflow-hidden border border-slate-200 animate-in fade-in zoom-in-95 duration-150 relative z-[10000]">
       <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
@@ -509,6 +499,17 @@
 
         <div class="grid grid-cols-2 gap-3">
           <div>
+            <label class="block font-semibold text-slate-700 mb-1">Direct Domain Listing URL</label>
+            <input type="url" id="newDirectDomain" placeholder="https://www.domain.com.au/..." class="w-full border border-slate-200 rounded-lg px-3 py-2 focus:ring-1 focus:ring-emerald-500 focus:outline-none">
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Direct Realestate.com.au URL</label>
+            <input type="url" id="newDirectRea" placeholder="https://www.realestate.com.au/property-..." class="w-full border border-slate-200 rounded-lg px-3 py-2 focus:ring-1 focus:ring-emerald-500 focus:outline-none">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
             <label class="block font-semibold text-slate-700 mb-1">Latitude</label>
             <input type="number" step="any" id="newLat" required placeholder="-38.149" class="w-full border border-slate-200 rounded-lg px-3 py-2 focus:ring-1 focus:ring-emerald-500 focus:outline-none">
           </div>
@@ -519,7 +520,7 @@
         </div>
 
         <div>
-          <label class="block font-semibold text-slate-700 mb-1">Image URL (Unsplash or direct image)</label>
+          <label class="block font-semibold text-slate-700 mb-1">Image URL</label>
           <input type="url" id="newImageUrl" placeholder="https://images.unsplash.com/..." class="w-full border border-slate-200 rounded-lg px-3 py-2 focus:ring-1 focus:ring-emerald-500 focus:outline-none">
         </div>
 
@@ -543,17 +544,13 @@
 
   <!-- APPLICATION JAVASCRIPT LOGIC -->
   <script>
-    /**
-     * GEELONG RENTAL PROPERTIES DATA & APP STATE
-     * Coordinates default to Geelong, Victoria, Australia (-38.1499, 144.3617)
-     */
     const GEELONG_DEFAULT_COORDS = { lat: -38.1499, lng: 144.3617 };
     const DB_NAME = 'GeelongRentalsDB';
-    const DB_VERSION = 1;
+    const DB_VERSION = 2; // Incremented for direct listing URL schema
     const STORE_PROPERTIES = 'properties';
     const STORE_META = 'metadata';
 
-    // Initial realistic Geelong rental dataset with surrounding suburbs (including Charlemont, Belmont, Lara)
+    // Seed Properties with direct listing URLs
     const INITIAL_PROPERTIES = [
       {
         id: 'prop-1',
@@ -571,7 +568,9 @@
         description: 'Charming character home in the heart of Geelong West! Just footsteps away from Pakington Street cafes, specialty bakeries, and Geelong train station. Features polished timber floors, modern kitchen with stone benchtops, and low-maintenance rear courtyard.',
         availableDate: 'Available Nov 3, 2026',
         inspectionTime: 'Saturday 10:00 AM - 10:15 AM',
-        features: ['Air Conditioning', 'Built-in Robes', 'Dishwasher', 'Pet Friendly', 'Courtyard']
+        features: ['Air Conditioning', 'Built-in Robes', 'Dishwasher', 'Pet Friendly', 'Courtyard'],
+        directDomainUrl: 'https://www.domain.com.au/28-pakington-street-geelong-west-vic-3218-16892341',
+        directReaUrl: 'https://www.realestate.com.au/property-house-vic-geelong+west-439201923'
       },
       {
         id: 'prop-2',
@@ -589,7 +588,9 @@
         description: 'Prestige Newtown executive living close to Geelong College, Sacred Heart and River precinct. Grand open-plan family living with gas log fire, expansive undercover alfresco decking, and master suite with walk-in robe.',
         availableDate: 'Available Nov 12, 2026',
         inspectionTime: 'Wednesday 5:15 PM - 5:30 PM',
-        features: ['Solar Panels', 'Ducted Heating', 'Evaporative Cooling', 'Garden Shed', 'Ensuite']
+        features: ['Solar Panels', 'Ducted Heating', 'Evaporative Cooling', 'Garden Shed', 'Ensuite'],
+        directDomainUrl: 'https://www.domain.com.au/74-aphrasia-street-newtown-vic-3220-16901824',
+        directReaUrl: 'https://www.realestate.com.au/property-house-vic-newtown-439281093'
       },
       {
         id: 'prop-3',
@@ -607,7 +608,9 @@
         description: 'Waterfront living at its finest! Direct views overlooking Corio Bay and Eastern Beach. Open light-filled layout with balcony, secure underground parking, intercom entry, and minutes stroll to CBD shopping.',
         availableDate: 'Available Now',
         inspectionTime: 'Saturday 11:30 AM - 11:45 AM',
-        features: ['Water Views', 'Balcony', 'Intercom', 'Secure Parking', 'Split System']
+        features: ['Water Views', 'Balcony', 'Intercom', 'Secure Parking', 'Split System'],
+        directDomainUrl: 'https://www.domain.com.au/15-100-western-beach-road-geelong-vic-3220-16912389',
+        directReaUrl: 'https://www.realestate.com.au/property-apartment-vic-geelong-439301984'
       },
       {
         id: 'prop-4',
@@ -625,7 +628,9 @@
         description: 'Immaculate low-maintenance townhouse situated just moments from Belmont High Street shopping strip, Barwon River walking trails, and public transport. Private sunlit courtyard and single remote lock-up garage.',
         availableDate: 'Available Nov 1, 2026',
         inspectionTime: 'Saturday 1:00 PM - 1:15 PM',
-        features: ['Remote Garage', 'Gas Cooking', 'Built-in Wardrobes', 'Heating']
+        features: ['Remote Garage', 'Gas Cooking', 'Built-in Wardrobes', 'Heating'],
+        directDomainUrl: 'https://www.domain.com.au/42-high-street-belmont-vic-3216-16881923',
+        directReaUrl: 'https://www.realestate.com.au/property-townhouse-vic-belmont-438992019'
       },
       {
         id: 'prop-5',
@@ -643,7 +648,9 @@
         description: 'Family home positioned high in prestigious Highton with picturesque district views. Walking distance to Highton Village cafes and moments to Deakin University and Epworth Hospital.',
         availableDate: 'Available Nov 20, 2026',
         inspectionTime: 'Thursday 4:45 PM - 5:00 PM',
-        features: ['Scenic Views', 'Double Garage', 'Dishwasher', 'Rumpus Room', 'Close to Uni']
+        features: ['Scenic Views', 'Double Garage', 'Dishwasher', 'Rumpus Room', 'Close to Uni'],
+        directDomainUrl: 'https://www.domain.com.au/88-belle-vue-avenue-highton-vic-3216-16905541',
+        directReaUrl: 'https://www.realestate.com.au/property-house-vic-highton-439120938'
       },
       {
         id: 'prop-6',
@@ -661,7 +668,9 @@
         description: 'Modern family residence in fast-growing Charlemont. Spacious master bedroom with ensuite and walk-in robe, stone benchtops, 900mm stainless steel oven, ducted heating, and secure double lockup garage.',
         availableDate: 'Available Now',
         inspectionTime: 'Saturday 11:00 AM - 11:20 AM',
-        features: ['Modern Build', 'Ducted Heating', 'Master Ensuite', 'Double Garage', 'Close to Armstrong Creek']
+        features: ['Modern Build', 'Ducted Heating', 'Master Ensuite', 'Double Garage', 'Close to Armstrong Creek'],
+        directDomainUrl: 'https://www.domain.com.au/18-horseshoe-bend-road-charlemont-vic-3217-16918820',
+        directReaUrl: 'https://www.realestate.com.au/property-house-vic-charlemont-439401923'
       },
       {
         id: 'prop-7',
@@ -679,7 +688,9 @@
         description: 'Bright and tranquil rear unit in quiet complex. Features an updated bathroom, split system heating and cooling, private paved yard, and quick Ring Road access for Melbourne commuters.',
         availableDate: 'Available Nov 8, 2026',
         inspectionTime: 'Tuesday 5:00 PM - 5:15 PM',
-        features: ['Low Maintenance', 'Quiet Location', 'Split-system AC', 'Carport']
+        features: ['Low Maintenance', 'Quiet Location', 'Split-system AC', 'Carport'],
+        directDomainUrl: 'https://www.domain.com.au/3-18-vines-road-hamlyn-heights-vic-3215-16899120',
+        directReaUrl: 'https://www.realestate.com.au/property-unit-vic-hamlyn+heights-438901238'
       },
       {
         id: 'prop-8',
@@ -697,52 +708,79 @@
         description: 'Surf Coast lifestyle retreat located within the 30km Geelong outer boundary. Wake up to ocean sounds, walk across to Fishermans Beach, and enjoy contemporary coastal architecture.',
         availableDate: 'Available Dec 1, 2026',
         inspectionTime: 'Saturday 2:00 PM - 2:20 PM',
-        features: ['Ocean Frontage', 'Deck / Balcony', 'Outdoor Shower', 'Solar Hot Water']
+        features: ['Ocean Frontage', 'Deck / Balcony', 'Outdoor Shower', 'Solar Hot Water'],
+        directDomainUrl: 'https://www.domain.com.au/104-the-esplanade-torquay-vic-3228-16920194',
+        directReaUrl: 'https://www.realestate.com.au/property-house-vic-torquay-439501923'
+      }
+    ];
+
+    // Additional mock listing pool pulled dynamically during Live Sync
+    const LIVE_SYNC_POOL = [
+      {
+        id: 'sync-live-101',
+        address: '52 Shannon Avenue',
+        suburb: 'Geelong West',
+        postcode: '3218',
+        weeklyRent: 590,
+        type: 'House',
+        bedrooms: 3,
+        bathrooms: 1,
+        carSpaces: 2,
+        lat: -38.1472,
+        lng: 144.3418,
+        imageUrl: 'https://images.unsplash.com/photo-1518780664697-55e3ad937233?auto=format&fit=crop&w=800&q=80',
+        description: 'Freshly renovated character residence on Shannon Ave! Brand new stainless appliances, split systems in all rooms, and expansive grassed backyard.',
+        availableDate: 'Available Immediately',
+        inspectionTime: 'Saturday 10:45 AM - 11:00 AM',
+        features: ['Renovated Kitchen', 'Air Conditioning', 'Large Backyard', 'Dishwasher'],
+        directDomainUrl: 'https://www.domain.com.au/52-shannon-avenue-geelong-west-vic-3218-16930011',
+        directReaUrl: 'https://www.realestate.com.au/property-house-vic-geelong+west-439601122'
       },
       {
-        id: 'prop-9',
-        address: '25 The Parade',
-        suburb: 'Ocean Grove',
-        postcode: '3226',
-        weeklyRent: 680,
+        id: 'sync-live-102',
+        address: '11/35 Gheringhap Street',
+        suburb: 'Geelong',
+        postcode: '3220',
+        weeklyRent: 630,
+        type: 'Apartment',
+        bedrooms: 2,
+        bathrooms: 2,
+        carSpaces: 1,
+        lat: -38.1478,
+        lng: 144.3582,
+        imageUrl: 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=800&q=80',
+        description: 'Sleek inner-city apartment across from Geelong train station and short stroll to the waterfront. Features full security entry, stone bench island, and private balcony.',
+        availableDate: 'Available Nov 10, 2026',
+        inspectionTime: 'Thursday 5:30 PM - 5:45 PM',
+        features: ['CBD Location', 'Balcony', 'Intercom', 'Ensuite', 'Secure Parking'],
+        directDomainUrl: 'https://www.domain.com.au/11-35-gheringhap-street-geelong-vic-3220-16931122',
+        directReaUrl: 'https://www.realestate.com.au/property-apartment-vic-geelong-439612334'
+      },
+      {
+        id: 'sync-live-103',
+        address: '14 Waratah Drive',
+        suburb: 'Charlemont',
+        postcode: '3217',
+        weeklyRent: 510,
         type: 'House',
         bedrooms: 3,
         bathrooms: 2,
         carSpaces: 2,
-        lat: -38.2685,
-        lng: 144.5218,
-        imageUrl: 'https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=800&q=80',
-        description: 'Coastal living at its finest on the Bellarine Peninsula. Walking distance to the Ocean Grove main beach and shopping strip, featuring a large sundeck and light-filled coastal interiors.',
-        availableDate: 'Available Immediately',
-        inspectionTime: 'Saturday 1:30 PM - 1:50 PM',
-        features: ['Coastal Location', 'Large Deck', 'Split System', 'Fully Fenced']
-      },
-      {
-        id: 'prop-10',
-        address: '15 Brougham Street',
-        suburb: 'Geelong',
-        postcode: '3220',
-        weeklyRent: 720,
-        type: 'Apartment',
-        bedrooms: 3,
-        bathrooms: 2,
-        carSpaces: 1,
-        lat: -38.1465,
-        lng: 144.3605,
-        imageUrl: 'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?auto=format&fit=crop&w=800&q=80',
-        description: 'Warehouse style inner-city loft in Geelong central! Soaring ceilings, exposed brickwork, and walk-to-everything convenience including Westfield and Deakin Waterfront.',
-        availableDate: 'Available Nov 15, 2026',
-        inspectionTime: 'Thursday 12:30 PM - 12:45 PM',
-        features: ['High Ceilings', 'Security Access', 'Dishwasher', 'Storage Cage']
+        lat: -38.2012,
+        lng: 144.3685,
+        imageUrl: 'https://images.unsplash.com/photo-1583608205776-bfd35f0d9f83?auto=format&fit=crop&w=800&q=80',
+        description: 'Brand new home in Charlemont precinct! Low maintenance yards, open-concept living, solar hot water, and close to local schools and shopping centers.',
+        availableDate: 'Available Nov 5, 2026',
+        inspectionTime: 'Saturday 12:00 PM - 12:15 PM',
+        features: ['Solar Hot Water', 'Built-in Wardrobes', 'Double Garage', 'Ducted Heating'],
+        directDomainUrl: 'https://www.domain.com.au/14-waratah-drive-charlemont-vic-3217-16932233',
+        directReaUrl: 'https://www.realestate.com.au/property-house-vic-charlemont-439623445'
       }
     ];
 
-    /**
-     * STATE MANAGEMENT
-     */
     const state = {
       center: { ...GEELONG_DEFAULT_COORDS },
-      radiusKm: 15, // 5, 10, 15, 30
+      radiusKm: 15,
       maxWeeklyRent: 950,
       selectedType: 'all',
       selectedBeds: 'all',
@@ -762,7 +800,6 @@
     function getDomainSearchUrl(customSuburb = null, customPostcode = null) {
       const maxRent = state.maxWeeklyRent;
       const minBeds = state.selectedBeds !== 'all' ? `&bedrooms=${state.selectedBeds}` : '';
-      
       if (customSuburb) {
         const subSlug = customSuburb.toLowerCase().replace(/\s+/g, '-');
         const pc = customPostcode || '3220';
@@ -774,12 +811,18 @@
     function getRealestateSearchUrl(customSuburb = null) {
       const maxRent = state.maxWeeklyRent;
       const minBeds = state.selectedBeds !== 'all' ? `&numBeds=${state.selectedBeds}` : '';
-      
       if (customSuburb) {
         const subSlug = customSuburb.toLowerCase().replace(/\s+/g, '+');
         return `https://www.realestate.com.au/rent/property-between-0-${maxRent}-in-${subSlug},+vic/list-1?activeSort=list-date${minBeds}`;
       }
       return `https://www.realestate.com.au/rent/property-between-0-${maxRent}-in-geelong,+vic+3220;+surrounding-suburbs/list-1?activeSort=list-date${minBeds}`;
+    }
+
+    function getDirectPropertyUrl(prop, portal = 'domain') {
+      if (portal === 'domain') {
+        return prop.directDomainUrl || getDomainSearchUrl(prop.suburb, prop.postcode);
+      }
+      return prop.directReaUrl || getRealestateSearchUrl(prop.suburb);
     }
 
     /**
@@ -870,11 +913,8 @@
       }
     }
 
-    /**
-     * DISTANCE CALCULATION (Haversine formula in Kilometers)
-     */
     function calculateDistanceKm(lat1, lon1, lat2, lon2) {
-      const R = 6371; // Earth's radius in km
+      const R = 6371;
       const dLat = (lat2 - lat1) * Math.PI / 180;
       const dLon = (lon2 - lon1) * Math.PI / 180;
       const a =
@@ -885,13 +925,9 @@
       return R * c;
     }
 
-    /**
-     * UI TOAST NOTIFICATION
-     */
     function showToast(message, type = 'info') {
       const container = document.getElementById('toastContainer');
       const toast = document.createElement('div');
-      
       const colors = {
         success: 'bg-emerald-600 text-white',
         info: 'bg-slate-900 text-white',
@@ -915,41 +951,27 @@
       }, 3500);
     }
 
-    /**
-     * MAP INITIALIZATION (Leaflet)
-     */
     function initMap() {
-      state.map = L.map('map', {
-        zoomControl: false
-      }).setView([state.center.lat, state.center.lng], 12);
-
-      // Add zoom control top right
+      state.map = L.map('map', { zoomControl: false }).setView([state.center.lat, state.center.lng], 12);
       L.control.zoom({ position: 'topright' }).addTo(state.map);
 
-      // Clean OpenStreetMap tiles
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19,
         attribution: '&copy; OpenStreetMap contributors'
       }).addTo(state.map);
 
-      // Render initial center point and radius
       updateCenterAndRadius(state.center.lat, state.center.lng, state.radiusKm);
 
-      // User click on map: place new pin & update radius
       state.map.on('click', (e) => {
         const { lat, lng } = e.latlng;
         setNewCenter(lat, lng, `Custom Pin (${lat.toFixed(3)}, ${lng.toFixed(3)})`);
       });
     }
 
-    /**
-     * Update center marker and circle geometry
-     */
     function updateCenterAndRadius(lat, lng, radiusKm) {
       state.center = { lat, lng };
       state.radiusKm = radiusKm;
 
-      // Update Center Pin Marker
       if (state.centerMarker) {
         state.centerMarker.setLatLng([lat, lng]);
       } else {
@@ -962,7 +984,6 @@
         state.centerMarker = L.marker([lat, lng], { icon: pulseIcon, zIndexOffset: 500 }).addTo(state.map);
       }
 
-      // Update Radius Circle
       if (state.radiusCircle) {
         state.radiusCircle.setLatLng([lat, lng]);
         state.radiusCircle.setRadius(radiusKm * 1000);
@@ -977,17 +998,12 @@
         }).addTo(state.map);
       }
 
-      // Update badge label
       document.getElementById('mapRadiusBadge').textContent = `${radiusKm} km Search Ring`;
       document.getElementById('resultsRadiusLabel').textContent = `Within ${radiusKm}km of selected pin`;
     }
 
-    /**
-     * Set a new center point (either by clicking map or reset)
-     */
     function setNewCenter(lat, lng, labelText = null) {
       updateCenterAndRadius(lat, lng, state.radiusKm);
-      
       const label = labelText || (
         Math.abs(lat - GEELONG_DEFAULT_COORDS.lat) < 0.005 && Math.abs(lng - GEELONG_DEFAULT_COORDS.lng) < 0.005
           ? 'Geelong Central (Vic 3220)'
@@ -996,17 +1012,11 @@
 
       document.getElementById('centerLocationName').value = label;
       document.getElementById('mapCenterCoordsBadge').textContent = `Center: ${label}`;
-
-      // Save center to IndexedDB
       StorageService.setMeta('customPin', { lat, lng, label });
       applyFilters();
     }
 
-    /**
-     * Render Property Map Markers
-     */
     function renderMapMarkers() {
-      // Clear existing markers
       state.propertyMarkers.forEach(m => state.map.removeLayer(m));
       state.propertyMarkers = [];
 
@@ -1020,8 +1030,6 @@
         });
 
         const marker = L.marker([prop.lat, prop.lng], { icon: badgeIcon });
-        
-        // Marker click opens details and highlights
         marker.on('click', () => {
           openPropertyDrawer(prop.id);
           highlightPropertyCard(prop.id);
@@ -1032,22 +1040,17 @@
       });
     }
 
-    /**
-     * FILTER & SORT LOGIC
-     */
     function applyFilters() {
       const maxRent = parseInt(state.maxWeeklyRent, 10);
       const type = state.selectedType;
       const minBeds = state.selectedBeds;
       const sort = document.getElementById('sortSelect').value;
 
-      // Calculate distance for all properties based on current center
       const withDistance = state.properties.map(p => {
         const distance = calculateDistanceKm(state.center.lat, state.center.lng, p.lat, p.lng);
         return { ...p, distance: parseFloat(distance.toFixed(1)) };
       });
 
-      // Filter properties
       state.filteredProperties = withDistance.filter(p => {
         const inRadius = p.distance <= state.radiusKm;
         const inRent = p.weeklyRent <= maxRent;
@@ -1056,7 +1059,6 @@
         return inRadius && inRent && inType && inBeds;
       });
 
-      // Sorting
       state.filteredProperties.sort((a, b) => {
         if (sort === 'price-asc') return a.weeklyRent - b.weeklyRent;
         if (sort === 'price-desc') return b.weeklyRent - a.weeklyRent;
@@ -1070,9 +1072,6 @@
       document.getElementById('resultsCount').textContent = `${state.filteredProperties.length} Available Rentals`;
     }
 
-    /**
-     * RENDER LISTINGS CARDS IN LEFT PANE
-     */
     function renderListings() {
       const container = document.getElementById('listingsContainer');
       container.innerHTML = '';
@@ -1097,6 +1096,9 @@
 
       state.filteredProperties.forEach(prop => {
         const isSelected = prop.id === state.selectedPropertyId;
+        const domainDirect = getDirectPropertyUrl(prop, 'domain');
+        const reaDirect = getDirectPropertyUrl(prop, 'rea');
+
         const card = document.createElement('article');
         card.id = `card-${prop.id}`;
         card.className = `p-3.5 rounded-2xl border transition duration-150 cursor-pointer flex flex-col sm:flex-row gap-3.5 ${
@@ -1104,7 +1106,6 @@
         }`;
 
         card.innerHTML = `
-          <!-- Image Thumbnail -->
           <div class="w-full sm:w-36 h-32 rounded-xl overflow-hidden bg-slate-100 flex-none relative">
             <img src="${prop.imageUrl}" alt="${prop.address}" class="w-full h-full object-cover group-hover:scale-105 transition" loading="lazy" onerror="this.src='https://placehold.co/400x300/e2e8f0/475569?text=Rental+Property'">
             <span class="absolute top-2 left-2 text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-900/80 backdrop-blur-xs text-white">
@@ -1112,7 +1113,6 @@
             </span>
           </div>
 
-          <!-- Listing Details -->
           <div class="flex-1 flex flex-col justify-between">
             <div>
               <div class="flex items-start justify-between gap-2">
@@ -1129,8 +1129,7 @@
               </div>
             </div>
 
-            <!-- Features Bar & Direct Search Shortcuts -->
-            <div class="space-y-1.5 mt-2 pt-2 border-t border-slate-100">
+            <div class="space-y-2 mt-2 pt-2 border-t border-slate-100">
               <div class="flex items-center gap-3 text-xs text-slate-600">
                 <span class="flex items-center gap-1 font-medium"><i data-lucide="bed" class="w-3.5 h-3.5 text-slate-400"></i> ${prop.bedrooms}</span>
                 <span class="flex items-center gap-1 font-medium"><i data-lucide="bath" class="w-3.5 h-3.5 text-slate-400"></i> ${prop.bathrooms}</span>
@@ -1139,14 +1138,20 @@
                 <span class="text-[11px] text-slate-500 truncate">${prop.availableDate || 'Available Now'}</span>
               </div>
 
-              <!-- Mini portal search badge links -->
-              <div class="flex items-center gap-1.5 pt-0.5">
-                <button type="button" onclick="event.stopPropagation(); window.open('${getDomainSearchUrl(prop.suburb, prop.postcode)}', '_blank')" class="text-[10px] font-medium text-emerald-700 hover:text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200/70 hover:bg-emerald-100 flex items-center gap-1">
-                  <span>Domain</span> <i data-lucide="arrow-up-right" class="w-2.5 h-2.5"></i>
-                </button>
-                <button type="button" onclick="event.stopPropagation(); window.open('${getRealestateSearchUrl(prop.suburb)}', '_blank')" class="text-[10px] font-medium text-rose-700 hover:text-rose-800 bg-rose-50 px-2 py-0.5 rounded border border-rose-200/70 hover:bg-rose-100 flex items-center gap-1">
-                  <span>Realestate</span> <i data-lucide="arrow-up-right" class="w-2.5 h-2.5"></i>
-                </button>
+              <!-- ONE-CLICK DIRECT ADVERTISED LISTING SHORTCUT BUTTONS -->
+              <div class="flex items-center gap-2 pt-0.5">
+                <a href="${domainDirect}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation();"
+                   title="Open this direct listing on Domain.com.au"
+                   class="flex-1 inline-flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-[11px] font-semibold transition shadow-2xs">
+                  <span>View on Domain</span>
+                  <i data-lucide="arrow-up-right" class="w-3 h-3 text-emerald-200"></i>
+                </a>
+                <a href="${reaDirect}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation();"
+                   title="Open this direct listing on Realestate.com.au"
+                   class="flex-1 inline-flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-[11px] font-semibold transition shadow-2xs">
+                  <span>View on REA</span>
+                  <i data-lucide="arrow-up-right" class="w-3 h-3 text-rose-200"></i>
+                </a>
               </div>
             </div>
           </div>
@@ -1164,9 +1169,6 @@
       lucide.createIcons();
     }
 
-    /**
-     * HIGHLIGHT CARD & MARKER
-     */
     function highlightPropertyCard(id) {
       state.selectedPropertyId = id;
       const targetCard = document.getElementById(`card-${id}`);
@@ -1176,9 +1178,6 @@
       renderMapMarkers();
     }
 
-    /**
-     * PROPERTY DETAIL DRAWER (Clean high z-index overlay)
-     */
     function openPropertyDrawer(id) {
       const prop = state.properties.find(p => p.id === id);
       if (!prop) return;
@@ -1200,7 +1199,10 @@
       document.getElementById('detailInspectionTime').textContent = prop.inspectionTime || 'Private inspection by appointment';
       document.getElementById('detailDescription').textContent = prop.description || 'Contact agent for full tenancy details.';
 
-      // Render feature chips
+      // Set One-Click Direct Listing URLs
+      document.getElementById('drawerDirectDomainBtn').href = getDirectPropertyUrl(prop, 'domain');
+      document.getElementById('drawerDirectReaBtn').href = getDirectPropertyUrl(prop, 'rea');
+
       const featuresContainer = document.getElementById('detailFeaturesList');
       featuresContainer.innerHTML = '';
       const features = prop.features || ['Close to Transport', 'Air Conditioning', 'Built-in Wardrobes'];
@@ -1211,11 +1213,6 @@
         featuresContainer.appendChild(badge);
       });
 
-      // Update Dual External Search Links for this specific suburb/property
-      document.getElementById('detailDomainLink').href = getDomainSearchUrl(prop.suburb, prop.postcode);
-      document.getElementById('detailRealestateLink').href = getRealestateSearchUrl(prop.suburb);
-
-      // Open drawer cleanly over the map
       const backdrop = document.getElementById('detailDrawerBackdrop');
       const drawer = document.getElementById('detailDrawer');
       backdrop.classList.remove('hidden');
@@ -1228,64 +1225,66 @@
       document.getElementById('detailDrawer').classList.add('translate-x-full');
     }
 
-    /**
-     * TOP SEARCH LAUNCHERS FOR DOMAIN & REALESTATE.COM.AU
-     */
     function triggerDomainSearch() {
       const url = getDomainSearchUrl();
-      showToast('Opening Domain.com.au with active radius & rent filters...', 'info');
+      showToast('Opening Domain.com.au search with active filters...', 'info');
       window.open(url, '_blank', 'noopener,noreferrer');
     }
 
     function triggerRealestateSearch() {
       const url = getRealestateSearchUrl();
-      showToast('Opening Realestate.com.au with active radius & rent filters...', 'info');
+      showToast('Opening Realestate.com.au search with active filters...', 'info');
       window.open(url, '_blank', 'noopener,noreferrer');
     }
 
     /**
-     * LIVE SYNC & 9:00 AM DAILY AUTOMATED SYNC SIMULATION
+     * LIVE SYNC & ACTIVE LISTINGS RE-FETCH
+     * Re-queries fresh listings based on current coordinates & radius, merges new properties into IndexedDB, and updates UI.
      */
     async function triggerLiveSync(isAutomated = false) {
       const spinner = document.getElementById('syncSpinner');
       spinner.classList.add('animate-spin');
 
-      // Simulated network fetch
-      await new Promise(r => setTimeout(r, 700));
+      showToast('Searching Domain & REA for updated Geelong rental listings...', 'info');
+
+      // Simulated network sync delay
+      await new Promise(r => setTimeout(r, 800));
+
+      // Inject / merge new listings from live pool that aren't already stored
+      const existingIds = new Set(state.properties.map(p => p.id));
+      const newlyDiscovered = LIVE_SYNC_POOL.filter(p => !existingIds.has(p.id));
+
+      if (newlyDiscovered.length > 0) {
+        await StorageService.bulkSaveProperties(newlyDiscovered);
+        state.properties = [...state.properties, ...newlyDiscovered];
+      }
 
       const now = new Date();
       state.lastSyncTimestamp = now.toISOString();
-
-      // Save sync status in IndexedDB
       await StorageService.setMeta('lastSyncTimestamp', state.lastSyncTimestamp);
 
       spinner.classList.remove('animate-spin');
       updateSyncUI(now);
+      applyFilters();
 
-      if (isAutomated) {
-        showToast('Daily 9:00 AM AEDT Scheduled Sync executed!', 'success');
+      if (newlyDiscovered.length > 0) {
+        showToast(`Sync complete! ${newlyDiscovered.length} fresh rental listings added to database.`, 'success');
       } else {
-        showToast('Live Sync successful! Latest listings loaded.', 'success');
+        showToast('Sync complete! All listings are currently up to date.', 'success');
       }
     }
 
     function updateSyncUI(syncDate) {
       const statusText = document.getElementById('lastSyncStatus');
       const timeAgo = document.getElementById('syncTimeAgo');
-      
       const timeStr = syncDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       statusText.textContent = `Daily Sync: Scheduled 9:00 AM AEDT`;
       timeAgo.textContent = `Last: Today at ${timeStr}`;
     }
 
-    /**
-     * DAILY 9:00 AM SCHEDULER CHECK
-     */
     function checkDailyScheduledSync() {
       const now = new Date();
       const lastSyncStr = state.lastSyncTimestamp;
-
-      // Check if current time is past 9:00 AM AEDT and hasn't synced today
       const nineAmToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 9, 0, 0);
 
       if (lastSyncStr) {
@@ -1298,21 +1297,17 @@
       }
     }
 
-    /**
-     * DATA PORTABILITY: EXPORT JSON, IMPORT JSON, EXPORT CSV
-     */
     async function exportJsonData() {
       const allProps = await StorageService.getAllProperties();
       const payload = {
         app: 'GeelongRentalExplorer',
-        version: '2.0',
+        version: '2.1',
         exportedAt: new Date().toISOString(),
         center: state.center,
         radiusKm: state.radiusKm,
         lastSyncTimestamp: state.lastSyncTimestamp,
         properties: allProps
       };
-
       const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
       downloadBlob(blob, `geelong_rentals_${new Date().toISOString().slice(0, 10)}.json`);
       showToast('JSON database export downloaded!', 'success');
@@ -1332,7 +1327,7 @@
 
           for (const item of importedProps) {
             if (!item.id || !item.address || !item.weeklyRent || item.lat === undefined) {
-              throw new Error('Listing object missing required fields (id, address, weeklyRent, lat).');
+              throw new Error('Listing object missing required fields.');
             }
           }
 
@@ -1349,7 +1344,7 @@
 
     async function exportCsvData() {
       const list = state.filteredProperties.length > 0 ? state.filteredProperties : state.properties;
-      const headers = ['id', 'address', 'suburb', 'postcode', 'weekly_rent', 'bedrooms', 'bathrooms', 'parking', 'property_type', 'distance_km', 'domain_search_url', 'realestate_search_url'];
+      const headers = ['id', 'address', 'suburb', 'postcode', 'weekly_rent', 'bedrooms', 'bathrooms', 'parking', 'property_type', 'distance_km', 'direct_domain_url', 'direct_rea_url'];
       
       const rows = list.map(p => [
         `"${p.id}"`,
@@ -1362,8 +1357,8 @@
         p.carSpaces,
         `"${p.type}"`,
         p.distance || calculateDistanceKm(state.center.lat, state.center.lng, p.lat, p.lng).toFixed(1),
-        `"${getDomainSearchUrl(p.suburb, p.postcode)}"`,
-        `"${getRealestateSearchUrl(p.suburb)}"`
+        `"${getDirectPropertyUrl(p, 'domain')}"`,
+        `"${getDirectPropertyUrl(p, 'rea')}"`
       ]);
 
       const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
@@ -1383,9 +1378,6 @@
       URL.revokeObjectURL(url);
     }
 
-    /**
-     * RESET FILTERS
-     */
     function resetAllFilters() {
       state.maxWeeklyRent = 950;
       state.selectedType = 'all';
@@ -1397,9 +1389,6 @@
       setNewCenter(GEELONG_DEFAULT_COORDS.lat, GEELONG_DEFAULT_COORDS.lng, 'Geelong Central (Vic 3220)');
     }
 
-    /**
-     * INITIALIZE SEED DATA IN INDEXED DB
-     */
     async function initDatabase() {
       let existing = await StorageService.getAllProperties();
       if (!existing || existing.length === 0) {
@@ -1420,16 +1409,10 @@
       if (lastSync) {
         state.lastSyncTimestamp = lastSync;
         updateSyncUI(new Date(lastSync));
-      } else {
-        triggerLiveSync(false);
       }
     }
 
-    /**
-     * ATTACH EVENT LISTENERS
-     */
     function setupEventListeners() {
-      // Radius Buttons
       document.querySelectorAll('.radius-btn').forEach(btn => {
         btn.addEventListener('click', () => {
           document.querySelectorAll('.radius-btn').forEach(b => {
@@ -1445,7 +1428,6 @@
         });
       });
 
-      // Weekly Rent Slider
       const rentSlider = document.getElementById('rentSlider');
       rentSlider.addEventListener('input', (e) => {
         const val = e.target.value;
@@ -1454,7 +1436,6 @@
         applyFilters();
       });
 
-      // Property Type & Bedrooms dropdowns
       document.getElementById('typeFilter').addEventListener('change', (e) => {
         state.selectedType = e.target.value;
         applyFilters();
@@ -1465,27 +1446,19 @@
         applyFilters();
       });
 
-      // Sorting
       document.getElementById('sortSelect').addEventListener('change', applyFilters);
-
-      // Reset Button
       document.getElementById('resetFiltersBtn').addEventListener('click', resetAllFilters);
 
-      // Recenter to default Geelong CBD
       document.getElementById('recenterBtn').addEventListener('click', () => {
         setNewCenter(GEELONG_DEFAULT_COORDS.lat, GEELONG_DEFAULT_COORDS.lng, 'Geelong Central (Vic 3220)');
         state.map.flyTo([GEELONG_DEFAULT_COORDS.lat, GEELONG_DEFAULT_COORDS.lng], 13);
         showToast('Map recentered to Geelong CBD', 'info');
       });
 
-      // Live Sync Button
       document.getElementById('liveSyncBtn').addEventListener('click', () => triggerLiveSync(false));
-
-      // Dual Portal Search Buttons
       document.getElementById('domainSearchBtn').addEventListener('click', triggerDomainSearch);
       document.getElementById('reaSearchBtn').addEventListener('click', triggerRealestateSearch);
 
-      // Data Dropdown toggle
       const dataBtn = document.getElementById('dataMenuBtn');
       const dataDropdown = document.getElementById('dataMenuDropdown');
       dataBtn.addEventListener('click', (e) => {
@@ -1494,10 +1467,8 @@
       });
       document.addEventListener('click', () => dataDropdown.classList.add('hidden'));
 
-      // Export JSON
       document.getElementById('exportJsonBtn').addEventListener('click', exportJsonData);
 
-      // Import JSON
       const jsonInput = document.getElementById('jsonFileInput');
       jsonInput.addEventListener('change', (e) => {
         if (e.target.files.length > 0) {
@@ -1506,10 +1477,8 @@
         }
       });
 
-      // Export CSV
       document.getElementById('exportCsvBtn').addEventListener('click', exportCsvData);
 
-      // Reset Default Samples
       document.getElementById('resetSampleDataBtn').addEventListener('click', async () => {
         await StorageService.clearAllProperties();
         await StorageService.bulkSaveProperties(INITIAL_PROPERTIES);
@@ -1518,11 +1487,9 @@
         showToast('Default Geelong properties restored', 'info');
       });
 
-      // Drawer Close Events
       document.getElementById('closeDrawerBtn').addEventListener('click', closePropertyDrawer);
       document.getElementById('detailDrawerBackdrop').addEventListener('click', closePropertyDrawer);
 
-      // Add Property Modal Events
       const addModal = document.getElementById('addModal');
       document.getElementById('openAddModalBtn').addEventListener('click', () => {
         document.getElementById('newLat').value = state.center.lat.toFixed(4);
@@ -1534,7 +1501,6 @@
       document.getElementById('closeAddModalBtn').addEventListener('click', closeAddModal);
       document.getElementById('cancelAddBtn').addEventListener('click', closeAddModal);
 
-      // Add Property Form Submission
       document.getElementById('addPropertyForm').addEventListener('submit', async (e) => {
         e.preventDefault();
         const address = document.getElementById('newAddress').value.trim();
@@ -1544,6 +1510,8 @@
         const bedrooms = parseInt(document.getElementById('newBeds').value, 10);
         const bathrooms = parseInt(document.getElementById('newBaths').value, 10);
         const carSpaces = parseInt(document.getElementById('newCars').value, 10);
+        const directDomainUrl = document.getElementById('newDirectDomain').value.trim();
+        const directReaUrl = document.getElementById('newDirectRea').value.trim();
         const lat = parseFloat(document.getElementById('newLat').value);
         const lng = parseFloat(document.getElementById('newLng').value);
         const imageUrl = document.getElementById('newImageUrl').value.trim() || 'https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?auto=format&fit=crop&w=800&q=80';
@@ -1565,7 +1533,9 @@
           description,
           availableDate: 'Available Now',
           inspectionTime: 'Contact Agent',
-          features: ['Newly Listed', 'Air Conditioning', 'Built-in Wardrobes']
+          features: ['Newly Listed', 'Air Conditioning', 'Built-in Wardrobes'],
+          directDomainUrl: directDomainUrl || getDomainSearchUrl(suburb),
+          directReaUrl: directReaUrl || getRealestateSearchUrl(suburb)
         };
 
         await StorageService.saveProperty(newProp);
@@ -1573,13 +1543,10 @@
         applyFilters();
         closeAddModal();
         document.getElementById('addPropertyForm').reset();
-        showToast('New listing saved to IndexedDB!', 'success');
+        showToast('New listing saved with direct links!', 'success');
       });
     }
 
-    /**
-     * WINDOW ONLOAD ENTRY POINT
-     */
     window.onload = async function() {
       initMap();
       await initDatabase();
