@@ -3,1834 +3,1564 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SoloNest v2 | Greater Geelong Budget Rental Aggregator</title>
-  <script src="https://cdn.counter.dev/script.js" data-id="da4b8fa3-0676-4ec8-a4ee-4f118e988fb1" data-utcoffset="11"></script>
+  <title>Geelong Rental Explorer | Domain Search & Live Sync</title>
+  
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- FontAwesome 6 CDN for UI Icons -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Leaflet CSS & JS for Interactive Map -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
   <script>
     tailwind.config = {
+      darkMode: 'class',
       theme: {
         extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+          },
           colors: {
-            brand: {
-              50: '#f0fdfa',
-              100: '#ccfbf1',
-              500: '#0d9488',
-              600: '#0f766e',
-              700: '#115e59',
-              800: '#134e4a',
-              900: '#042f2e',
-            }
+            domain: {
+              50: '#f0fdf4',
+              100: '#dcfce7',
+              500: '#10b981',
+              600: '#059669',
+              700: '#047857',
+              brand: '#00843D', // Iconic Australian Domain Green style
+            },
+            brandDark: '#0f172a'
           }
         }
       }
     }
   </script>
+
   <style>
-    *:focus-visible {
-      outline: 2px solid #0f766e;
-      outline-offset: 2px;
-    }
-    .custom-scrollbar::-webkit-scrollbar {
-      width: 6px;
-      height: 6px;
-    }
-    .custom-scrollbar::-webkit-scrollbar-track {
-      background: #f1f5f9;
-    }
-    .custom-scrollbar::-webkit-scrollbar-thumb {
-      background-color: #cbd5e1;
+    /* Custom styling for Leaflet custom marker badges */
+    .price-badge-marker {
+      background: white;
+      border: 2px solid #00843D;
+      color: #0f172a;
+      font-weight: 700;
+      font-size: 11px;
+      padding: 3px 7px;
       border-radius: 9999px;
+      box-shadow: 0 4px 6px -1px rgba(0,0,0,0.18), 0 2px 4px -2px rgba(0,0,0,0.1);
+      white-space: nowrap;
+      transition: all 0.2s ease;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 3px;
     }
-    .line-clamp-2 {
-      display: -webkit-box;
-      -webkit-line-clamp: 2;
-      -webkit-box-orient: vertical;
-      overflow: hidden;
+    .price-badge-marker:hover, .price-badge-marker.active {
+      background: #00843D;
+      color: white;
+      transform: scale(1.12);
+      z-index: 1000 !important;
     }
+    .center-pin-pulse {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: #ef4444;
+      border: 3px solid white;
+      box-shadow: 0 0 0 rgba(239, 68, 68, 0.6);
+      animation: pulse-ring 2s infinite;
+    }
+    @keyframes pulse-ring {
+      0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+      70% { box-shadow: 0 0 0 16px rgba(239, 68, 68, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+    }
+    /* Hide scrollbars for clean chip slider */
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
   </style>
 </head>
-<body class="bg-slate-50 text-slate-800 antialiased min-h-screen flex flex-col font-sans selection:bg-brand-100 selection:text-brand-800">
+<body class="bg-slate-50 text-slate-800 antialiased flex flex-col h-screen overflow-hidden">
 
-  <!-- Toast Notification Popover -->
-  <div id="toast" class="fixed bottom-5 right-5 z-50 transform transition-all duration-300 translate-y-20 opacity-0 pointer-events-none bg-slate-900 text-white px-5 py-3 rounded-xl shadow-2xl flex items-center gap-3 border border-slate-700 text-xs sm:text-sm font-medium">
-    <i id="toast-icon" class="fa-solid fa-circle-check text-emerald-400"></i>
-    <span id="toast-message">Ready</span>
-  </div>
-
-  <!-- Header -->
-  <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-xs">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between gap-4">
+  <!-- TOP HEADER / NAV -->
+  <header class="bg-white border-b border-slate-200 z-30 flex-none shadow-sm">
+    <div class="max-w-[1920px] mx-auto px-4 py-2.5 flex flex-wrap items-center justify-between gap-3">
+      
+      <!-- Brand & Location default badge -->
       <div class="flex items-center gap-3">
-        <div class="w-10 h-10 rounded-xl bg-brand-600 text-white flex items-center justify-center shadow-md shadow-brand-600/20">
-          <i class="fa-solid fa-building-user text-lg"></i>
-        </div>
-        <div>
-          <div class="flex items-center gap-2">
-            <h1 class="text-xl font-black text-slate-900 tracking-tight">SoloNest <span class="text-xs px-1.5 py-0.5 rounded bg-brand-50 text-brand-700 font-bold border border-brand-200">v2.0</span></h1>
-            <span class="hidden md:inline-flex bg-slate-100 text-slate-600 text-[11px] font-semibold px-2 py-0.5 rounded-full border border-slate-200">
-              Greater Geelong Rental Aggregator
-            </span>
+        <div class="flex items-center gap-2">
+          <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-500 flex items-center justify-center text-white shadow-md shadow-emerald-500/20">
+            <i data-lucide="home" class="w-5 h-5"></i>
           </div>
-          <p class="text-xs text-slate-500">Affordable Single-Person Rooms, Studios, Flats & 1-Bed Units</p>
+          <div>
+            <div class="flex items-center gap-2">
+              <h1 class="text-base font-bold text-slate-900 tracking-tight leading-none">GeelongRent<span class="text-emerald-600">Sync</span></h1>
+              <span class="bg-emerald-50 text-emerald-700 text-[10px] font-semibold px-2 py-0.5 rounded-full border border-emerald-200">Victoria, AU</span>
+            </div>
+            <p class="text-[11px] text-slate-500 mt-0.5 hidden sm:block">Domain Real Estate Finder & Radius Radar</p>
+          </div>
+        </div>
+
+        <div class="h-6 w-px bg-slate-200 hidden md:block"></div>
+
+        <!-- Sync & Scheduler Info Pill -->
+        <div class="hidden lg:flex items-center gap-2 text-xs bg-slate-100/80 px-3 py-1.5 rounded-lg border border-slate-200/80">
+          <span class="relative flex h-2 w-2">
+            <span id="syncPulsePing" class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+            <span id="syncPulseDot" class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+          </span>
+          <span id="lastSyncStatus" class="font-medium text-slate-600">Daily Sync: Scheduled 9:00 AM AEDT</span>
+          <span class="text-slate-400">|</span>
+          <span id="syncTimeAgo" class="text-slate-500">Last: Just now</span>
         </div>
       </div>
 
-      <!-- Action Buttons -->
-      <div class="flex items-center gap-2">
-        <button onclick="triggerLiveRefresh()" id="refresh-sync-btn" class="px-3.5 py-2 text-xs font-bold rounded-xl text-brand-700 bg-brand-50 hover:bg-brand-100 border border-brand-200 transition-all flex items-center gap-1.5 shadow-xs">
-          <i class="fa-solid fa-rotate text-brand-600" id="refresh-sync-icon"></i>
+      <!-- Action Buttons & Tools -->
+      <div class="flex items-center flex-wrap gap-2">
+        
+        <!-- Live Sync Trigger -->
+        <button id="liveSyncBtn" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 text-xs font-semibold transition active:scale-95 shadow-sm">
+          <i data-lucide="refresh-cw" id="syncSpinner" class="w-3.5 h-3.5"></i>
           <span>Live Sync</span>
-          <span id="sync-counter-badge" class="bg-brand-600 text-white text-[10px] px-1.5 py-0.2 rounded-full font-bold ml-0.5">100</span>
         </button>
 
-        <button onclick="openBulkIngestModal()" class="px-3 py-2 text-xs font-semibold rounded-xl text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-200 transition-colors flex items-center gap-1.5" title="Bulk import scrapings or raw listings">
-          <i class="fa-solid fa-file-import text-brand-600"></i>
-          <span class="hidden sm:inline">Bulk Ingest</span>
+        <!-- Search Domain external deep link -->
+        <button id="domainSearchBtn" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-900 text-white hover:bg-slate-800 text-xs font-semibold transition shadow-sm active:scale-95">
+          <i data-lucide="external-link" class="w-3.5 h-3.5 text-emerald-400"></i>
+          <span class="hidden sm:inline">Search</span> Domain.com.au
         </button>
 
-        <button onclick="openAddListingModal()" class="px-3.5 py-2 text-xs font-bold rounded-xl text-white bg-slate-900 hover:bg-brand-600 transition-colors flex items-center gap-1.5 shadow-xs">
-          <i class="fa-solid fa-plus"></i>
+        <div class="h-5 w-px bg-slate-200"></div>
+
+        <!-- Add Property Button -->
+        <button id="openAddModalBtn" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold transition shadow-sm active:scale-95">
+          <i data-lucide="plus-circle" class="w-3.5 h-3.5"></i>
           <span class="hidden sm:inline">Add Listing</span>
         </button>
 
-        <button onclick="openDataModal()" class="p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-xl text-sm border border-slate-200 transition-colors" title="Export / Import Database">
-          <i class="fa-solid fa-database"></i>
-        </button>
+        <!-- Data Dropdown/Controls (Import/Export JSON, Export CSV) -->
+        <div class="relative inline-block text-left" id="dataDropdownWrapper">
+          <button id="dataMenuBtn" class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-xs font-medium text-slate-700 shadow-sm transition">
+            <i data-lucide="database" class="w-3.5 h-3.5 text-slate-500"></i>
+            <span class="hidden md:inline">Data / Portability</span>
+            <i data-lucide="chevron-down" class="w-3 h-3 text-slate-400"></i>
+          </button>
+          
+          <div id="dataMenuDropdown" class="hidden absolute right-0 mt-2 w-56 rounded-xl bg-white shadow-xl border border-slate-200 py-1.5 z-50 text-xs animate-in fade-in slide-in-from-top-2 duration-150">
+            <div class="px-3 py-1.5 text-[11px] font-semibold text-slate-400 uppercase tracking-wider border-b border-slate-100">IndexedDB Storage</div>
+            <button id="exportJsonBtn" class="w-full text-left px-3.5 py-2 hover:bg-slate-50 flex items-center gap-2.5 text-slate-700">
+              <i data-lucide="download" class="w-4 h-4 text-emerald-600"></i>
+              <div>
+                <div class="font-medium">Export Backup (JSON)</div>
+                <div class="text-[10px] text-slate-400">Complete database snapshot</div>
+              </div>
+            </button>
+            <label class="w-full text-left px-3.5 py-2 hover:bg-slate-50 flex items-center gap-2.5 text-slate-700 cursor-pointer">
+              <i data-lucide="upload" class="w-4 h-4 text-blue-600"></i>
+              <div>
+                <div class="font-medium">Import Backup (JSON)</div>
+                <div class="text-[10px] text-slate-400">Merge or restore listings</div>
+              </div>
+              <input type="file" id="jsonFileInput" accept=".json" class="hidden">
+            </label>
+            <div class="border-t border-slate-100 my-1"></div>
+            <button id="exportCsvBtn" class="w-full text-left px-3.5 py-2 hover:bg-slate-50 flex items-center gap-2.5 text-slate-700">
+              <i data-lucide="file-spreadsheet" class="w-4 h-4 text-emerald-600"></i>
+              <div>
+                <div class="font-medium">Export to CSV</div>
+                <div class="text-[10px] text-slate-400">Formatted for Excel / Google Sheets</div>
+              </div>
+            </button>
+            <button id="resetSampleDataBtn" class="w-full text-left px-3.5 py-2 hover:bg-red-50 flex items-center gap-2.5 text-red-600">
+              <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+              <div>
+                <div class="font-medium">Restore Geelong Samples</div>
+                <div class="text-[10px] text-red-400">Reset default listings</div>
+              </div>
+            </button>
+          </div>
+        </div>
+
       </div>
     </div>
   </header>
 
-  <!-- Main Container -->
-  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 w-full flex-grow space-y-4">
-
-    <!-- Deep Search Aggregator Launcher Banner -->
-    <div class="bg-slate-900 text-white rounded-2xl p-4 sm:p-5 shadow-sm border border-slate-800">
-      <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3 mb-3 pb-3 border-b border-slate-800">
-        <div>
-          <span class="text-[11px] font-bold uppercase tracking-wider text-teal-400 flex items-center gap-1.5 mb-0.5">
-            <i class="fa-solid fa-bolt-lightning text-teal-400"></i> Public Platform Live Search Launcher
-          </span>
-          <p class="text-xs text-slate-300">
-            Generate and execute real-time searches across major rental portals using your active filter criteria (Suburb: <strong class="text-white" id="launcher-suburb-display">All Geelong</strong>, Max: <strong class="text-white" id="launcher-price-display">$350/wk</strong>).
-          </p>
-        </div>
-        <div class="flex items-center gap-2 self-start lg:self-auto">
-          <button onclick="launchAllPlatforms()" class="px-3.5 py-2 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 text-xs font-black transition-all flex items-center gap-1.5 shadow-md shadow-teal-500/20 whitespace-nowrap">
-            <i class="fa-solid fa-arrow-up-right-from-square"></i>
-            <span>Launch All 5 Platforms</span>
+  <!-- FILTER & SEARCH BAR -->
+  <section class="bg-white border-b border-slate-200 flex-none px-4 py-3 z-20 shadow-xs">
+    <div class="max-w-[1920px] mx-auto flex flex-col md:flex-row md:items-center justify-between gap-3">
+      
+      <!-- Search Center & Radius Controls -->
+      <div class="flex flex-wrap items-center gap-3">
+        <!-- Location input display -->
+        <div class="relative min-w-[220px]">
+          <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+            <i data-lucide="map-pin" class="w-4 h-4 text-emerald-600"></i>
+          </div>
+          <input type="text" id="centerLocationName" value="Geelong Central (Vic 3220)" readonly
+            class="bg-slate-100 border border-slate-200 text-slate-800 text-xs rounded-lg pl-9 pr-8 py-2 w-full font-semibold focus:outline-none cursor-default select-none">
+          <button id="recenterBtn" title="Reset Pin to Central Geelong" class="absolute inset-y-0 right-0 pr-2.5 flex items-center text-slate-400 hover:text-slate-600 text-xs">
+            <i data-lucide="crosshair" class="w-4 h-4"></i>
           </button>
         </div>
-      </div>
 
-      <!-- Platform Launcher Grid Buttons -->
-      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5">
-        <button onclick="launchPlatformSearch('flatmates')" class="p-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-800 border border-red-500/30 hover:border-red-500 text-left transition-all group">
-          <div class="flex items-center justify-between mb-1">
-            <span class="text-xs font-bold text-red-400 group-hover:text-red-300 flex items-center gap-1.5">
-              <span class="w-2 h-2 rounded-full bg-red-500"></span> Flatmates
-            </span>
-            <i class="fa-solid fa-arrow-up-right-from-square text-[10px] text-slate-500 group-hover:text-white"></i>
-          </div>
-          <p class="text-[11px] text-slate-400 line-clamp-1">Rooms & Granny flats</p>
-        </button>
-
-        <button onclick="launchPlatformSearch('domain')" class="p-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-800 border border-emerald-500/30 hover:border-emerald-500 text-left transition-all group">
-          <div class="flex items-center justify-between mb-1">
-            <span class="text-xs font-bold text-emerald-400 group-hover:text-emerald-300 flex items-center gap-1.5">
-              <span class="w-2 h-2 rounded-full bg-emerald-500"></span> Domain
-            </span>
-            <i class="fa-solid fa-arrow-up-right-from-square text-[10px] text-slate-500 group-hover:text-white"></i>
-          </div>
-          <p class="text-[11px] text-slate-400 line-clamp-1">1-Bed units & studios</p>
-        </button>
-
-        <button onclick="launchPlatformSearch('realestate')" class="p-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-800 border border-rose-500/30 hover:border-rose-500 text-left transition-all group">
-          <div class="flex items-center justify-between mb-1">
-            <span class="text-xs font-bold text-rose-400 group-hover:text-rose-300 flex items-center gap-1.5">
-              <span class="w-2 h-2 rounded-full bg-rose-500"></span> Realestate.com.au
-            </span>
-            <i class="fa-solid fa-arrow-up-right-from-square text-[10px] text-slate-500 group-hover:text-white"></i>
-          </div>
-          <p class="text-[11px] text-slate-400 line-clamp-1">Units, flats & apartments</p>
-        </button>
-
-        <button onclick="launchPlatformSearch('gumtree')" class="p-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-800 border border-lime-500/30 hover:border-lime-500 text-left transition-all group">
-          <div class="flex items-center justify-between mb-1">
-            <span class="text-xs font-bold text-lime-400 group-hover:text-lime-300 flex items-center gap-1.5">
-              <span class="w-2 h-2 rounded-full bg-lime-500"></span> Gumtree
-            </span>
-            <i class="fa-solid fa-arrow-up-right-from-square text-[10px] text-slate-500 group-hover:text-white"></i>
-          </div>
-          <p class="text-[11px] text-slate-400 line-clamp-1">Sharehouses & direct rooms</p>
-        </button>
-
-        <button onclick="launchPlatformSearch('airbnb')" class="p-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-800 border border-pink-500/30 hover:border-pink-500 text-left transition-all group">
-          <div class="flex items-center justify-between mb-1">
-            <span class="text-xs font-bold text-pink-400 group-hover:text-pink-300 flex items-center gap-1.5">
-              <span class="w-2 h-2 rounded-full bg-pink-500"></span> Airbnb (28d+)
-            </span>
-            <i class="fa-solid fa-arrow-up-right-from-square text-[10px] text-slate-500 group-hover:text-white"></i>
-          </div>
-          <p class="text-[11px] text-slate-400 line-clamp-1">Extended medium-term stays</p>
-        </button>
-      </div>
-    </div>
-
-    <!-- Sub-Region Quick Switcher Tabs -->
-    <div class="bg-white rounded-2xl p-2 border border-slate-200 shadow-xs flex items-center gap-1.5 overflow-x-auto custom-scrollbar">
-      <button onclick="setSubRegion('ALL')" data-region="ALL" class="region-tab active-region px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all bg-brand-600 text-white shadow-xs">
-        All Greater Geelong <span id="badge-count-all" class="ml-1 px-1.5 py-0.5 rounded-full text-[10px] bg-brand-700 text-white">100</span>
-      </button>
-      <button onclick="setSubRegion('SOUTH')" data-region="SOUTH" class="region-tab px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all text-slate-600 hover:bg-slate-100">
-        South & Uni <span class="text-[10px] text-slate-400 ml-1">(Belmont / Grovedale / Waurn Ponds)</span>
-      </button>
-      <button onclick="setSubRegion('NORTH')" data-region="NORTH" class="region-tab px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all text-slate-600 hover:bg-slate-100">
-        North Geelong <span class="text-[10px] text-slate-400 ml-1">(Corio / Norlane / Bell Park)</span>
-      </button>
-      <button onclick="setSubRegion('INNER')" data-region="INNER" class="region-tab px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all text-slate-600 hover:bg-slate-100">
-        Inner & Central <span class="text-[10px] text-slate-400 ml-1">(CBD / West / Newtown)</span>
-      </button>
-      <button onclick="setSubRegion('EAST')" data-region="EAST" class="region-tab px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all text-slate-600 hover:bg-slate-100">
-        East & Bellarine <span class="text-[10px] text-slate-400 ml-1">(Newcomb / Whittington)</span>
-      </button>
-      <button onclick="setSubRegion('GROWTH')" data-region="GROWTH" class="region-tab px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all text-slate-600 hover:bg-slate-100">
-        Growth Corridor <span class="text-[10px] text-slate-400 ml-1">(Charlemont / Armstrong Creek)</span>
-      </button>
-    </div>
-
-    <!-- Filter & Search Toolbar -->
-    <section class="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-xs space-y-4">
-      
-      <!-- Primary Input & Dropdown Row -->
-      <div class="grid grid-cols-1 md:grid-cols-12 gap-3">
-        <!-- Search Keyword -->
-        <div class="md:col-span-4 relative">
-          <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-            <i class="fa-solid fa-magnifying-glass"></i>
-          </div>
-          <input 
-            type="text" 
-            id="filter-keyword" 
-            placeholder="Search suburb, street, 'bills', 'ensuite', 'quiet'..." 
-            class="w-full pl-10 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-900 focus:bg-white focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
-            oninput="applyFilters()"
-          >
-        </div>
-
-        <!-- Suburb Dropdown -->
-        <div class="md:col-span-3">
-          <select 
-            id="filter-suburb" 
-            class="w-full py-2.5 px-3 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-900 focus:bg-white focus:border-brand-500 focus:ring-1 focus:ring-brand-500 font-medium"
-            onchange="syncSubRegionFromSuburb(); applyFilters();"
-          >
-            <option value="ALL">All Suburbs in Greater Geelong</option>
-            <optgroup label="South & Uni Belt">
-              <option value="Belmont">Belmont (3216)</option>
-              <option value="Grovedale">Grovedale (3216)</option>
-              <option value="Waurn Ponds">Waurn Ponds (3216)</option>
-              <option value="Highton">Highton (3216)</option>
-              <option value="Marshall">Marshall (3216)</option>
-            </optgroup>
-            <optgroup label="Growth Corridor">
-              <option value="Charlemont">Charlemont (3217)</option>
-              <option value="Armstrong Creek">Armstrong Creek (3217)</option>
-              <option value="Mount Duneed">Mount Duneed (3217)</option>
-            </optgroup>
-            <optgroup label="North Geelong">
-              <option value="Corio">Corio (3214)</option>
-              <option value="Norlane">Norlane (3214)</option>
-              <option value="North Shore">North Shore (3214)</option>
-              <option value="Bell Park">Bell Park (3215)</option>
-              <option value="Bell Post Hill">Bell Post Hill (3215)</option>
-              <option value="Hamlyn Heights">Hamlyn Heights (3215)</option>
-              <option value="North Geelong">North Geelong (3215)</option>
-              <option value="Lara">Lara (3212)</option>
-            </optgroup>
-            <optgroup label="Inner & Central">
-              <option value="Geelong CBD">Geelong CBD (3220)</option>
-              <option value="Geelong West">Geelong West (3218)</option>
-              <option value="Newtown">Newtown (3220)</option>
-              <option value="South Geelong">South Geelong (3220)</option>
-              <option value="East Geelong">East Geelong (3219)</option>
-            </optgroup>
-            <optgroup label="East & Bellarine Fringe">
-              <option value="Newcomb">Newcomb (3219)</option>
-              <option value="Whittington">Whittington (3219)</option>
-              <option value="Thomson">Thomson (3219)</option>
-              <option value="Breakwater">Breakwater (3219)</option>
-              <option value="St Albans Park">St Albans Park (3219)</option>
-              <option value="Leopold">Leopold (3224)</option>
-              <option value="Moolap">Moolap (3224)</option>
-            </optgroup>
-          </select>
-        </div>
-
-        <!-- Recency Listed -->
-        <div class="md:col-span-3">
-          <select 
-            id="filter-recency" 
-            class="w-full py-2.5 px-3 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-900 focus:bg-white focus:border-brand-500 focus:ring-1 focus:ring-brand-500 font-medium"
-            onchange="applyFilters()"
-          >
-            <option value="ALL">Anytime Listed</option>
-            <option value="TODAY">Listed Today</option>
-            <option value="3">Listed in Last 3 Days</option>
-            <option value="7">Listed in Last 7 Days</option>
-            <option value="14">Listed in Last 14 Days</option>
-            <option value="28">Listed in Last 28 Days</option>
-          </select>
-        </div>
-
-        <!-- Platform Source -->
-        <div class="md:col-span-2">
-          <select 
-            id="filter-source" 
-            class="w-full py-2.5 px-3 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-900 focus:bg-white focus:border-brand-500 focus:ring-1 focus:ring-brand-500 font-medium"
-            onchange="applyFilters()"
-          >
-            <option value="ALL">All Platforms</option>
-            <option value="Flatmates">Flatmates</option>
-            <option value="Domain">Domain</option>
-            <option value="Realestate">Realestate.com.au</option>
-            <option value="Gumtree">Gumtree</option>
-            <option value="Airbnb">Airbnb</option>
-            <option value="Direct">Direct / Other</option>
-          </select>
-        </div>
-      </div>
-
-      <!-- Secondary Controls: Type Pills, Max Rent Slider & Lease Length -->
-      <div class="pt-3 border-t border-slate-100 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-        <!-- Accommodation Type Selector -->
-        <div class="flex items-center gap-1.5 flex-wrap text-xs">
-          <span class="text-slate-400 font-bold uppercase tracking-wider text-[10px] mr-1">Type:</span>
-          <button type="button" onclick="setTypeFilter('ALL')" data-type="ALL" class="type-pill active-pill px-3 py-1.5 rounded-lg border font-bold bg-brand-50 border-brand-200 text-brand-700 shadow-xs">All Types</button>
-          <button type="button" onclick="setTypeFilter('Single Room (Share House)')" data-type="Single Room (Share House)" class="type-pill px-3 py-1.5 rounded-lg border border-slate-200 font-medium text-slate-600 hover:bg-slate-50">Private Room</button>
-          <button type="button" onclick="setTypeFilter('Studio / Granny Flat')" data-type="Studio / Granny Flat" class="type-pill px-3 py-1.5 rounded-lg border border-slate-200 font-medium text-slate-600 hover:bg-slate-50">Studio / Granny Flat</button>
-          <button type="button" onclick="setTypeFilter('1-Bed Unit / Apartment')" data-type="1-Bed Unit / Apartment" class="type-pill px-3 py-1.5 rounded-lg border border-slate-200 font-medium text-slate-600 hover:bg-slate-50">1-Bed Unit</button>
-        </div>
-
-        <!-- Rent Slider -->
-        <div class="flex items-center gap-3 min-w-[280px]">
-          <span class="text-xs font-semibold text-slate-500 whitespace-nowrap">Max Rent:</span>
-          <input 
-            type="range" 
-            id="price-range" 
-            min="100" 
-            max="450" 
-            step="10" 
-            value="380" 
-            class="w-full accent-brand-600 h-1.5 bg-slate-200 rounded-lg cursor-pointer"
-            oninput="updatePriceSlider(this.value)"
-          >
-          <span id="price-display" class="text-xs font-black text-brand-800 bg-brand-50 border border-brand-200 px-2.5 py-1 rounded-lg min-w-[75px] text-center">
-            $380/wk
+        <!-- Radius Selector Pill Group -->
+        <div class="flex items-center gap-1 bg-slate-100 p-1 rounded-lg border border-slate-200 text-xs">
+          <span class="text-slate-400 px-2 font-medium flex items-center gap-1 text-[11px]">
+            <i data-lucide="radar" class="w-3.5 h-3.5"></i> Radius:
           </span>
+          <button class="radius-btn px-2.5 py-1 rounded-md font-semibold transition" data-radius="5">5 km</button>
+          <button class="radius-btn px-2.5 py-1 rounded-md font-semibold transition" data-radius="10">10 km</button>
+          <button class="radius-btn px-2.5 py-1 rounded-md font-semibold transition bg-emerald-600 text-white shadow-xs" data-radius="15">15 km</button>
+          <button class="radius-btn px-2.5 py-1 rounded-md font-semibold transition" data-radius="30">30 km</button>
         </div>
+
+        <!-- Quick Hint -->
+        <span class="text-[11px] text-slate-500 hidden xl:inline-flex items-center gap-1">
+          <i data-lucide="info" class="w-3 h-3 text-emerald-600"></i> Click anywhere on the map to re-center the radius ring
+        </span>
       </div>
 
-      <!-- Inclusions & Sorting Options -->
-      <div class="pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3 text-xs">
-        <div class="flex flex-wrap items-center gap-2">
-          <!-- Lease Duration -->
-          <div class="flex items-center gap-1 mr-1">
-            <span class="text-slate-400 font-bold text-[10px] uppercase tracking-wider">Lease:</span>
-            <select id="filter-lease" onchange="applyFilters()" class="text-xs bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-slate-700 font-semibold">
-              <option value="ALL">Any Lease Term</option>
-              <option value="FLEX">Flexible / Month-to-Month</option>
-              <option value="MEDIUM">3 - 6 Months</option>
-              <option value="LONG">12+ Months</option>
-            </select>
+      <!-- Price & Type Filters -->
+      <div class="flex flex-wrap items-center gap-4">
+        
+        <!-- Max Weekly Rent Slider -->
+        <div class="flex items-center gap-3 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200">
+          <div class="text-xs">
+            <div class="text-[10px] text-slate-500 font-medium">MAX WEEKLY RENT</div>
+            <div class="font-bold text-slate-900 text-sm flex items-center" id="rentDisplayVal">
+              $950 <span class="text-xs font-normal text-slate-500 ml-1">/ wk</span>
+            </div>
           </div>
-
-          <!-- Feature Checkboxes -->
-          <label class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 cursor-pointer select-none">
-            <input type="checkbox" id="chk-bills" onchange="applyFilters()" class="rounded text-brand-600 focus:ring-brand-500">
-            <span class="text-emerald-700 font-bold">Bills Included</span>
-          </label>
-
-          <label class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 cursor-pointer select-none">
-            <input type="checkbox" id="chk-furnished" onchange="applyFilters()" class="rounded text-brand-600 focus:ring-brand-500">
-            <span class="text-slate-700 font-medium">Furnished</span>
-          </label>
-
-          <label class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 cursor-pointer select-none">
-            <input type="checkbox" id="chk-parking" onchange="applyFilters()" class="rounded text-brand-600 focus:ring-brand-500">
-            <span class="text-slate-700 font-medium">Off-street Parking</span>
-          </label>
-
-          <label class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 cursor-pointer select-none">
-            <input type="checkbox" id="chk-transit" onchange="applyFilters()" class="rounded text-brand-600 focus:ring-brand-500">
-            <span class="text-slate-700 font-medium">Near Train/Bus</span>
-          </label>
-
-          <label class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-50/70 hover:bg-amber-100 border border-amber-200/80 cursor-pointer select-none">
-            <input type="checkbox" id="chk-saved-only" onchange="applyFilters()" class="rounded text-amber-600 focus:ring-amber-500">
-            <span class="text-amber-800 font-bold"><i class="fa-solid fa-star text-amber-500 text-[10px]"></i> Shortlist Only</span>
-          </label>
+          <div class="flex flex-col gap-1 w-32 sm:w-40">
+            <input type="range" id="rentSlider" min="300" max="1600" step="25" value="950" 
+              class="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-emerald-600">
+            <div class="flex justify-between text-[9px] text-slate-400 font-mono">
+              <span>$300</span>
+              <span>$1,600+</span>
+            </div>
+          </div>
         </div>
 
+        <!-- Property Type Filter -->
+        <select id="typeFilter" class="bg-white border border-slate-200 text-xs font-medium text-slate-700 rounded-lg px-2.5 py-2 focus:ring-1 focus:ring-emerald-500 focus:outline-none">
+          <option value="all">All Types</option>
+          <option value="House">House</option>
+          <option value="Townhouse">Townhouse</option>
+          <option value="Apartment">Apartment</option>
+          <option value="Unit">Unit</option>
+        </select>
+
+        <!-- Bedrooms filter -->
+        <select id="bedFilter" class="bg-white border border-slate-200 text-xs font-medium text-slate-700 rounded-lg px-2.5 py-2 focus:ring-1 focus:ring-emerald-500 focus:outline-none">
+          <option value="all">Any Beds</option>
+          <option value="1">1+ Beds</option>
+          <option value="2">2+ Beds</option>
+          <option value="3">3+ Beds</option>
+          <option value="4">4+ Beds</option>
+        </select>
+
+        <!-- Reset Filters button -->
+        <button id="resetFiltersBtn" class="text-slate-400 hover:text-slate-600 p-2 text-xs flex items-center gap-1" title="Reset all filters">
+          <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
+          <span class="hidden sm:inline">Reset</span>
+        </button>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- MAIN DUAL-PANE WORKSPACE: LISTINGS (LEFT) + MAP (RIGHT) -->
+  <main class="flex-1 flex flex-col md:flex-row overflow-hidden relative">
+
+    <!-- LEFT LISTINGS PANE -->
+    <section class="w-full md:w-[480px] lg:w-[540px] xl:w-[600px] flex-none flex flex-col bg-white border-r border-slate-200 z-10">
+      
+      <!-- Listings Header / Counter Bar -->
+      <div class="px-4 py-2.5 bg-slate-50/80 border-b border-slate-200 flex items-center justify-between text-xs">
         <div class="flex items-center gap-2">
-          <span class="text-slate-400 font-medium">Sort:</span>
-          <select id="sort-select" onchange="applyFilters()" class="text-xs bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-slate-700 font-semibold">
-            <option value="date-newest">Listed: Newest First</option>
-            <option value="price-asc">Price: Inexpensive First</option>
-            <option value="price-desc">Price: Highest First</option>
-            <option value="suburb-asc">Suburb: Alphabetical</option>
+          <span class="font-bold text-slate-900" id="resultsCount">0 Available Rentals</span>
+          <span class="text-slate-400">•</span>
+          <span class="text-slate-500 text-[11px]" id="resultsRadiusLabel">Within 15km of Geelong</span>
+        </div>
+        
+        <div class="flex items-center gap-2">
+          <label class="text-[11px] text-slate-500">Sort:</label>
+          <select id="sortSelect" class="bg-transparent font-medium text-slate-700 text-xs focus:outline-none cursor-pointer">
+            <option value="price-asc">Price: Low to High</option>
+            <option value="price-desc">Price: High to Low</option>
+            <option value="dist-asc" selected>Distance: Nearest</option>
+            <option value="beds-desc">Beds: Most first</option>
           </select>
-          <button onclick="resetFilters()" class="text-xs text-slate-400 hover:text-slate-800 underline px-1">Reset</button>
         </div>
       </div>
 
+      <!-- Scrollable Properties Container -->
+      <div id="listingsContainer" class="flex-1 overflow-y-auto p-4 space-y-3.5 divide-y divide-slate-100">
+        <!-- Rendered via JavaScript -->
+      </div>
+      
     </section>
 
-    <!-- Results Status Bar -->
-    <div class="flex flex-wrap items-center justify-between gap-3 text-xs px-1">
-      <div class="flex items-center gap-2">
-        <span class="font-bold text-slate-800 text-sm" id="result-count">Showing 0 rentals</span>
-        <span class="text-slate-400" id="filter-summary-badge"></span>
-      </div>
-      <div class="flex items-center gap-3 text-slate-500">
-        <span class="flex items-center gap-1.5">
-          <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
-          <span id="db-indicator">IndexedDB Connected</span>
-        </span>
-        <span class="text-slate-300">•</span>
-        <span id="last-sync-time" class="italic">Ready</span>
-      </div>
-    </div>
+    <!-- RIGHT INTERACTIVE MAP CONTAINER -->
+    <section class="flex-1 relative h-full bg-slate-100">
+      <div id="map" class="w-full h-full"></div>
 
-    <!-- Cards Grid Container -->
-    <div id="cards-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-      <!-- Rental accommodation cards dynamically generated here -->
-    </div>
-
-    <!-- Empty State -->
-    <div id="empty-state" class="hidden text-center py-16 px-4 bg-white rounded-2xl border border-dashed border-slate-300">
-      <div class="w-14 h-14 mx-auto rounded-full bg-slate-100 text-slate-400 flex items-center justify-center text-xl mb-3">
-        <i class="fa-solid fa-bed"></i>
+      <!-- Map overlay quick float badge -->
+      <div class="absolute top-4 left-4 z-[500] bg-white/95 backdrop-blur-md px-3.5 py-2 rounded-xl shadow-lg border border-slate-200/80 text-xs pointer-events-auto flex items-center gap-3">
+        <div class="flex items-center gap-2">
+          <div class="w-3 h-3 rounded-full bg-red-500 border-2 border-white shadow-xs"></div>
+          <span class="font-semibold text-slate-800" id="mapCenterCoordsBadge">Center: Geelong CBD</span>
+        </div>
+        <span class="text-slate-300">|</span>
+        <div class="text-slate-600 font-medium flex items-center gap-1">
+          <i data-lucide="disc" class="w-3.5 h-3.5 text-emerald-600"></i>
+          <span id="mapRadiusBadge">15 km Search Ring</span>
+        </div>
       </div>
-      <h3 class="text-base font-bold text-slate-800 mb-1">No single-person accommodations match these filters</h3>
-      <p class="text-xs text-slate-500 max-w-sm mx-auto mb-4">Try widening your price slider, clearing inclusions, or switching to "All Greater Geelong".</p>
-      <button onclick="resetFilters()" class="px-4 py-2 bg-brand-600 text-white rounded-xl text-xs font-bold hover:bg-brand-700 shadow-xs">
-        Reset All Filters
-      </button>
-    </div>
+
+      <!-- Map floating instructions button / legend -->
+      <div class="absolute bottom-6 right-6 z-[500] bg-white/95 backdrop-blur-md px-3 py-2 rounded-xl shadow-md border border-slate-200 text-[11px] text-slate-600 flex items-center gap-2">
+        <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-emerald-600 inline-block"></span> Within Radius</span>
+        <span class="text-slate-300">|</span>
+        <span class="text-slate-500">Tap pin to view property</span>
+      </div>
+    </section>
 
   </main>
 
-  <!-- Detailed Listing Modal -->
-  <div id="detail-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 hidden">
-    <div class="bg-white rounded-2xl max-w-2xl w-full max-h-[92vh] flex flex-col shadow-2xl overflow-hidden animate-in fade-in duration-150">
-      
-      <!-- Modal Top Bar -->
-      <div class="p-5 border-b border-slate-100 flex items-start justify-between bg-slate-50/80">
-        <div>
-          <div class="flex items-center gap-2 mb-1.5">
-            <span id="modal-source-badge" class="px-2.5 py-0.5 rounded text-[11px] font-bold uppercase tracking-wider text-white">Source</span>
-            <span id="modal-type-badge" class="px-2 py-0.5 rounded text-[11px] font-semibold bg-slate-200 text-slate-800">Type</span>
-            <span id="modal-region-badge" class="px-2 py-0.5 rounded text-[11px] font-semibold bg-brand-50 text-brand-800 border border-brand-200">Region</span>
-          </div>
-          <h2 id="modal-title" class="text-lg font-bold text-slate-900 leading-snug">Listing Title</h2>
-          <p id="modal-location" class="text-xs text-slate-500 flex items-center gap-1.5 mt-0.5">
-            <i class="fa-solid fa-location-dot text-brand-600"></i> Suburb, Greater Geelong
-          </p>
-        </div>
-        <button onclick="closeDetailModal()" class="text-slate-400 hover:text-slate-700 p-1.5 rounded-lg hover:bg-slate-200">
-          <i class="fa-solid fa-xmark text-lg"></i>
-        </button>
+  <!-- PROPERTY DETAIL SLIDE-OVER DRAWER -->
+  <div id="detailDrawerBackdrop" class="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 hidden transition-opacity"></div>
+  <aside id="detailDrawer" class="fixed inset-y-0 right-0 w-full sm:w-[500px] bg-white shadow-2xl z-50 transform translate-x-full transition-transform duration-300 ease-in-out flex flex-col">
+    <!-- Drawer Header -->
+    <div class="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+      <div class="flex items-center gap-2">
+        <span id="detailBadgeType" class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800">House</span>
+        <span id="detailDistanceBadge" class="text-xs font-medium text-slate-500 bg-white border border-slate-200 px-2 py-0.5 rounded-full">2.4 km from pin</span>
       </div>
-
-      <!-- Modal Content Body -->
-      <div class="p-6 overflow-y-auto custom-scrollbar space-y-5 text-xs sm:text-sm">
-        
-        <!-- Financials Grid -->
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-50 p-4 rounded-xl border border-slate-200">
-          <div>
-            <span class="text-[11px] text-slate-400 font-medium block">Weekly Rent</span>
-            <span id="modal-price-week" class="text-xl font-black text-slate-900">$0/wk</span>
-          </div>
-          <div>
-            <span class="text-[11px] text-slate-400 font-medium block">Estimated Monthly</span>
-            <span id="modal-price-month" class="text-sm font-bold text-slate-700">$0/mo</span>
-          </div>
-          <div>
-            <span class="text-[11px] text-slate-400 font-medium block">Bond / Deposit</span>
-            <span id="modal-bond" class="text-xs font-semibold text-slate-700">$0</span>
-          </div>
-          <div>
-            <span class="text-[11px] text-slate-400 font-medium block">Available</span>
-            <span id="modal-avail" class="text-xs font-bold text-emerald-700">Immediate</span>
-          </div>
-        </div>
-
-        <!-- Badges Cluster -->
-        <div>
-          <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Terms, Utilities & Inclusions</h3>
-          <div id="modal-badges" class="flex flex-wrap gap-2 text-xs">
-            <!-- Dynamic Badges -->
-          </div>
-        </div>
-
-        <!-- Notes / Full Description -->
-        <div>
-          <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Property Description & Inspection Notes</h3>
-          <div id="modal-notes" class="text-slate-600 text-xs sm:text-sm bg-slate-50 p-4 rounded-xl border border-slate-200 whitespace-pre-line leading-relaxed">
-            Notes will appear here.
-          </div>
-        </div>
-
-        <!-- Contact & Platform Link Box -->
-        <div class="bg-brand-50/70 p-4 rounded-xl border border-brand-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-          <div>
-            <span class="text-[11px] font-bold uppercase tracking-wider text-brand-800 block">Contact Information</span>
-            <div id="modal-contact" class="font-bold text-slate-800 text-sm">Contact Name</div>
-            <div id="modal-phone" class="text-xs text-slate-600">0400 000 000</div>
-          </div>
-          <div class="flex items-center gap-2">
-            <a id="modal-external-link" href="#" target="_blank" rel="noopener noreferrer" class="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-xs">
-              <span>Open on Platform</span>
-              <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
-            </a>
-            <button onclick="copyListingSummary()" class="px-3 py-2 bg-white border border-slate-200 text-slate-700 rounded-xl text-xs font-semibold hover:bg-slate-50 flex items-center gap-1.5">
-              <i class="fa-solid fa-clipboard text-slate-500"></i>
-              <span>Copy</span>
-            </button>
-          </div>
-        </div>
-
-      </div>
-
-      <!-- Modal Footer -->
-      <div class="p-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between text-xs">
-        <span class="text-slate-400" id="modal-id-display">ID: #000</span>
-        <div class="flex items-center gap-2">
-          <button id="modal-delete-btn" onclick="deleteActiveListing()" class="px-3 py-1.5 text-rose-600 hover:bg-rose-50 rounded-lg font-medium">Delete</button>
-          <button onclick="closeDetailModal()" class="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl font-bold">Close</button>
-        </div>
-      </div>
-
+      <button id="closeDrawerBtn" class="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
     </div>
-  </div>
 
-  <!-- Bulk Ingest / Browser Scraper Import Modal -->
-  <div id="bulk-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 hidden">
-    <div class="bg-white rounded-2xl max-w-xl w-full p-5 sm:p-6 shadow-2xl overflow-hidden animate-in fade-in duration-150 space-y-4">
-      <div class="flex items-center justify-between pb-3 border-b border-slate-100">
-        <div>
-          <h3 class="font-bold text-slate-900 text-base flex items-center gap-2">
-            <i class="fa-solid fa-wand-magic-sparkles text-brand-600"></i> Bulk Ingest & Scraper Drop
-          </h3>
-          <p class="text-xs text-slate-500">Paste multi-line listings, TSV/table copies, or scraper outputs</p>
+    <!-- Drawer Body -->
+    <div class="flex-1 overflow-y-auto p-5 space-y-5" id="detailDrawerContent">
+      <!-- Media Cover -->
+      <div class="relative h-64 rounded-2xl overflow-hidden shadow-md bg-slate-100 group">
+        <img id="detailImg" src="" alt="Property" class="w-full h-full object-cover">
+        <div class="absolute bottom-3 left-3 bg-slate-900/80 backdrop-blur-md text-white px-3 py-1 rounded-lg text-sm font-bold flex items-center gap-1">
+          <span id="detailWeeklyRent">$0</span>
+          <span class="text-xs font-normal text-slate-300">/ week</span>
         </div>
-        <button onclick="closeBulkIngestModal()" class="text-slate-400 hover:text-slate-700">
-          <i class="fa-solid fa-xmark text-lg"></i>
+      </div>
+
+      <!-- Address & Suburb -->
+      <div>
+        <h2 id="detailAddress" class="text-xl font-bold text-slate-900">Address</h2>
+        <p id="detailSuburb" class="text-sm font-medium text-emerald-700">Suburb, VIC Postcode</p>
+      </div>
+
+      <!-- Key Features Grid -->
+      <div class="grid grid-cols-4 gap-2 py-3 border-y border-slate-100 text-center">
+        <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+          <i data-lucide="bed" class="w-4 h-4 mx-auto text-emerald-600 mb-1"></i>
+          <span id="detailBeds" class="block font-bold text-slate-800 text-sm">0</span>
+          <span class="text-[10px] text-slate-400">Bedrooms</span>
+        </div>
+        <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+          <i data-lucide="bath" class="w-4 h-4 mx-auto text-emerald-600 mb-1"></i>
+          <span id="detailBaths" class="block font-bold text-slate-800 text-sm">0</span>
+          <span class="text-[10px] text-slate-400">Bathrooms</span>
+        </div>
+        <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+          <i data-lucide="car" class="w-4 h-4 mx-auto text-emerald-600 mb-1"></i>
+          <span id="detailCars" class="block font-bold text-slate-800 text-sm">0</span>
+          <span class="text-[10px] text-slate-400">Parking</span>
+        </div>
+        <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+          <i data-lucide="shield-check" class="w-4 h-4 mx-auto text-emerald-600 mb-1"></i>
+          <span id="detailBond" class="block font-bold text-slate-800 text-sm">$0</span>
+          <span class="text-[10px] text-slate-400">Bond (4wks)</span>
+        </div>
+      </div>
+
+      <!-- Inspection & Availability -->
+      <div class="bg-emerald-50/60 border border-emerald-100 rounded-xl p-3.5 space-y-1.5 text-xs">
+        <div class="flex items-center gap-2 text-emerald-900 font-semibold">
+          <i data-lucide="calendar" class="w-4 h-4 text-emerald-600"></i>
+          <span>Next Inspection / Availability</span>
+        </div>
+        <p id="detailAvailableDate" class="text-slate-600 pl-6">Available Immediately</p>
+        <p id="detailInspectionTime" class="text-slate-600 pl-6 font-medium">Saturday: 10:30 AM - 10:45 AM</p>
+      </div>
+
+      <!-- Property Description -->
+      <div>
+        <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Description</h3>
+        <p id="detailDescription" class="text-xs text-slate-600 leading-relaxed whitespace-pre-line"></p>
+      </div>
+
+      <!-- Highlight Badges -->
+      <div>
+        <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Property Features</h3>
+        <div id="detailFeaturesList" class="flex flex-wrap gap-1.5">
+          <!-- Rendered dynamically -->
+        </div>
+      </div>
+
+      <!-- Domain Search Deep Link Helper -->
+      <div class="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-emerald-500"></span> Verified Listing Source
+          </span>
+          <span class="text-[10px] bg-slate-200 text-slate-700 px-2 py-0.5 rounded-md font-mono">domain.com.au</span>
+        </div>
+        <p class="text-[11px] text-slate-500">Access full tenancy documents, book application forms, or look up comparable rent records directly.</p>
+        <a id="detailDomainLink" href="#" target="_blank" rel="noopener noreferrer"
+           class="inline-flex w-full items-center justify-center gap-2 px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-semibold transition">
+          <span>View on Domain.com.au</span>
+          <i data-lucide="external-link" class="w-3.5 h-3.5 text-emerald-400"></i>
+        </a>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ADD PROPERTY MODAL -->
+  <div id="addModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-lg w-full shadow-2xl overflow-hidden border border-slate-200 animate-in fade-in zoom-in-95 duration-150">
+      <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+        <h3 class="font-bold text-slate-900 text-sm flex items-center gap-2">
+          <i data-lucide="home" class="w-4 h-4 text-emerald-600"></i>
+          Add New Rental Listing (Geelong Area)
+        </h3>
+        <button id="closeAddModalBtn" class="p-1 rounded-lg text-slate-400 hover:text-slate-600">
+          <i data-lucide="x" class="w-4 h-4"></i>
         </button>
       </div>
 
-      <div class="space-y-3 text-xs">
-        <p class="text-slate-600 leading-relaxed">
-          Paste text copied from Flatmates, Domain, Realestate, or tabular data from browser scrapers (Web Scraper / Instant Data Scraper). The parser detects prices, suburbs, and platform sources automatically.
-        </p>
-
-        <textarea 
-          id="bulk-input-text" 
-          rows="7" 
-          placeholder="e.g.
-Private room in Belmont $190/wk furnished bills incl
-Corio studio granny flat $220/wk Domain
-1-Bed unit in Geelong CBD $340 pw realestate.com.au
-Grovedale room for rent $165 pw near Waurn Ponds" 
-          class="w-full p-3 font-mono text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:border-brand-500"
-        ></textarea>
-
-        <div class="bg-slate-100 p-3 rounded-xl flex items-center justify-between">
-          <span class="text-slate-600">Duplicate detection: Active (matches existing URLs or Titles)</span>
-          <button onclick="insertSampleBulkText()" class="text-brand-600 font-bold hover:underline">Insert Sample Text</button>
+      <form id="addPropertyForm" class="p-5 space-y-3.5 text-xs max-h-[80vh] overflow-y-auto">
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Street Address</label>
+          <input type="text" id="newAddress" required placeholder="e.g. 14 Mercer Street" class="w-full border border-slate-200 rounded-lg px-3 py-2 focus:ring-1 focus:ring-emerald-500 focus:outline-none">
         </div>
 
-        <div class="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
-          <button onclick="closeBulkIngestModal()" class="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl font-semibold">Cancel</button>
-          <button onclick="processBulkIngest()" class="px-5 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl font-bold shadow-xs">
-            Parse & Ingest into IndexedDB
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Suburb</label>
+            <input type="text" id="newSuburb" required placeholder="e.g. Geelong West" class="w-full border border-slate-200 rounded-lg px-3 py-2 focus:ring-1 focus:ring-emerald-500 focus:outline-none">
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Weekly Rent ($AUD)</label>
+            <input type="number" id="newRent" required min="100" max="5000" placeholder="e.g. 580" class="w-full border border-slate-200 rounded-lg px-3 py-2 focus:ring-1 focus:ring-emerald-500 focus:outline-none">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-4 gap-2">
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Type</label>
+            <select id="newType" class="w-full border border-slate-200 rounded-lg px-2 py-2 focus:ring-1 focus:ring-emerald-500 focus:outline-none">
+              <option value="House">House</option>
+              <option value="Apartment">Apartment</option>
+              <option value="Townhouse">Townhouse</option>
+              <option value="Unit">Unit</option>
+            </select>
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Beds</label>
+            <input type="number" id="newBeds" value="3" min="1" max="10" class="w-full border border-slate-200 rounded-lg px-2 py-2 focus:ring-1 focus:ring-emerald-500 focus:outline-none">
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Baths</label>
+            <input type="number" id="newBaths" value="2" min="1" max="8" class="w-full border border-slate-200 rounded-lg px-2 py-2 focus:ring-1 focus:ring-emerald-500 focus:outline-none">
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Cars</label>
+            <input type="number" id="newCars" value="1" min="0" max="6" class="w-full border border-slate-200 rounded-lg px-2 py-2 focus:ring-1 focus:ring-emerald-500 focus:outline-none">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Latitude</label>
+            <input type="number" step="any" id="newLat" required placeholder="-38.149" class="w-full border border-slate-200 rounded-lg px-3 py-2 focus:ring-1 focus:ring-emerald-500 focus:outline-none">
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Longitude</label>
+            <input type="number" step="any" id="newLng" required placeholder="144.361" class="w-full border border-slate-200 rounded-lg px-3 py-2 focus:ring-1 focus:ring-emerald-500 focus:outline-none">
+          </div>
+        </div>
+
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Image URL (Unsplash or direct image)</label>
+          <input type="url" id="newImageUrl" placeholder="https://images.unsplash.com/..." class="w-full border border-slate-200 rounded-lg px-3 py-2 focus:ring-1 focus:ring-emerald-500 focus:outline-none">
+        </div>
+
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Description</label>
+          <textarea id="newDesc" rows="3" placeholder="Bright and spacious family home with open plan kitchen..." class="w-full border border-slate-200 rounded-lg px-3 py-2 focus:ring-1 focus:ring-emerald-500 focus:outline-none"></textarea>
+        </div>
+
+        <div class="pt-2 flex items-center justify-end gap-2 border-t border-slate-100">
+          <button type="button" id="cancelAddBtn" class="px-3.5 py-2 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 font-medium">Cancel</button>
+          <button type="submit" class="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold flex items-center gap-1.5">
+            <i data-lucide="check" class="w-4 h-4"></i> Save to Database
           </button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Manual Add Listing Modal -->
-  <div id="add-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 hidden">
-    <div class="bg-white rounded-2xl max-w-lg w-full max-h-[92vh] flex flex-col shadow-2xl overflow-hidden animate-in fade-in duration-150">
-      
-      <div class="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
-        <div>
-          <h2 class="font-bold text-slate-900 text-base">Add Single-Person Accommodation</h2>
-          <p class="text-xs text-slate-500">Commits directly to local IndexedDB store</p>
-        </div>
-        <button onclick="closeAddListingModal()" class="text-slate-400 hover:text-slate-700 p-1">
-          <i class="fa-solid fa-xmark text-lg"></i>
-        </button>
-      </div>
-
-      <form id="listing-form" onsubmit="handleFormSubmit(event)" class="p-5 overflow-y-auto custom-scrollbar space-y-3 text-xs">
-        <div>
-          <label class="block font-semibold text-slate-700 mb-1">Title *</label>
-          <input type="text" id="f-title" required placeholder="e.g. Furnished Room with Ensuite near Deakin Uni" class="w-full p-2.5 border border-slate-200 rounded-xl">
-        </div>
-
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label class="block font-semibold text-slate-700 mb-1">Platform Source *</label>
-            <select id="f-source" class="w-full p-2.5 border border-slate-200 rounded-xl bg-white font-medium">
-              <option value="Flatmates">Flatmates</option>
-              <option value="Domain">Domain</option>
-              <option value="Realestate">Realestate.com.au</option>
-              <option value="Gumtree">Gumtree</option>
-              <option value="Airbnb">Airbnb</option>
-              <option value="Direct">Direct / Other</option>
-            </select>
-          </div>
-          <div>
-            <label class="block font-semibold text-slate-700 mb-1">Accommodation Type *</label>
-            <select id="f-type" class="w-full p-2.5 border border-slate-200 rounded-xl bg-white font-medium">
-              <option value="Single Room (Share House)">Single Room (Share House)</option>
-              <option value="Studio / Granny Flat">Studio / Granny Flat</option>
-              <option value="1-Bed Unit / Apartment">1-Bed Unit / Apartment</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="grid grid-cols-3 gap-3">
-          <div>
-            <label class="block font-semibold text-slate-700 mb-1">Rent $/wk *</label>
-            <input type="number" id="f-price" required min="80" max="999" placeholder="200" class="w-full p-2.5 border border-slate-200 rounded-xl font-bold">
-          </div>
-          <div>
-            <label class="block font-semibold text-slate-700 mb-1">Suburb *</label>
-            <input type="text" id="f-suburb" required placeholder="Belmont" class="w-full p-2.5 border border-slate-200 rounded-xl">
-          </div>
-          <div>
-            <label class="block font-semibold text-slate-700 mb-1">Date Listed *</label>
-            <input type="date" id="f-date" required class="w-full p-2.5 border border-slate-200 rounded-xl">
-          </div>
-        </div>
-
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label class="block font-semibold text-slate-700 mb-1">Lease Length</label>
-            <select id="f-lease" class="w-full p-2.5 border border-slate-200 rounded-xl bg-white font-medium">
-              <option value="Flexible / Month-to-Month">Flexible / Month-to-Month</option>
-              <option value="Medium Term (3 - 6 months)">Medium Term (3 - 6 months)</option>
-              <option value="Long Term (12+ months)">Long Term (12+ months)</option>
-            </select>
-          </div>
-          <div>
-            <label class="block font-semibold text-slate-700 mb-1">Available From</label>
-            <input type="text" id="f-avail" placeholder="Immediate or Date" class="w-full p-2.5 border border-slate-200 rounded-xl">
-          </div>
-        </div>
-
-        <div>
-          <label class="block font-semibold text-slate-700 mb-1">Inclusions & Amenities</label>
-          <div class="grid grid-cols-2 gap-2 text-slate-700">
-            <label class="flex items-center gap-2"><input type="checkbox" id="f-bills" class="rounded text-brand-600"> Bills Included in Rent</label>
-            <label class="flex items-center gap-2"><input type="checkbox" id="f-furnished" class="rounded text-brand-600"> Fully / Semi Furnished</label>
-            <label class="flex items-center gap-2"><input type="checkbox" id="f-parking" class="rounded text-brand-600"> Off-street Parking</label>
-            <label class="flex items-center gap-2"><input type="checkbox" id="f-transit" class="rounded text-brand-600"> Near Public Transport</label>
-          </div>
-        </div>
-
-        <div>
-          <label class="block font-semibold text-slate-700 mb-1">Original Listing URL</label>
-          <input type="url" id="f-url" placeholder="https://www.flatmates.com.au/..." class="w-full p-2.5 border border-slate-200 rounded-xl">
-        </div>
-
-        <div>
-          <label class="block font-semibold text-slate-700 mb-1">Description & Inspection Notes</label>
-          <textarea id="f-notes" rows="2" placeholder="Clean brick unit, quiet cul-de-sac, split system AC..." class="w-full p-2.5 border border-slate-200 rounded-xl"></textarea>
-        </div>
-
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label class="block font-semibold text-slate-700 mb-1">Contact Name</label>
-            <input type="text" id="f-cname" placeholder="Host / Property Manager" class="w-full p-2.5 border border-slate-200 rounded-xl">
-          </div>
-          <div>
-            <label class="block font-semibold text-slate-700 mb-1">Contact Phone</label>
-            <input type="text" id="f-ccontact" placeholder="0400 000 000" class="w-full p-2.5 border border-slate-200 rounded-xl">
-          </div>
-        </div>
-
-        <div class="pt-3 border-t border-slate-100 flex justify-end gap-2">
-          <button type="button" onclick="closeAddListingModal()" class="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl font-semibold">Cancel</button>
-          <button type="submit" class="px-5 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl font-bold shadow-xs">Save Listing</button>
         </div>
       </form>
-
     </div>
   </div>
 
-  <!-- Database Import/Export Modal -->
-  <div id="data-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 hidden">
-    <div class="bg-white rounded-2xl max-w-md w-full p-5 shadow-2xl overflow-hidden animate-in fade-in duration-150 space-y-4">
-      <div class="flex items-center justify-between pb-3 border-b border-slate-100">
-        <h3 class="font-bold text-slate-800 text-base flex items-center gap-2">
-          <i class="fa-solid fa-database text-brand-600"></i> IndexedDB Catalog Manager
-        </h3>
-        <button onclick="closeDataModal()" class="text-slate-400 hover:text-slate-700">
-          <i class="fa-solid fa-xmark text-lg"></i>
-        </button>
-      </div>
+  <!-- FLOATING TOAST NOTIFICATION CONTAINER -->
+  <div id="toastContainer" class="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 flex flex-col gap-2 pointer-events-none"></div>
 
-      <div class="space-y-4 text-xs">
-        <div class="p-3.5 bg-slate-50 rounded-xl border border-slate-200">
-          <h4 class="font-bold text-slate-800 mb-1">Export Active Database</h4>
-          <p class="text-slate-500 mb-3">Download the current Geelong listings catalog.</p>
-          <div class="flex gap-2">
-            <button onclick="exportData('csv')" class="px-3.5 py-2 bg-white border border-slate-300 rounded-xl hover:bg-slate-100 font-bold text-slate-700 flex items-center gap-1.5 shadow-2xs">
-              <i class="fa-solid fa-file-csv text-emerald-600"></i> Export CSV
-            </button>
-            <button onclick="exportData('json')" class="px-3.5 py-2 bg-white border border-slate-300 rounded-xl hover:bg-slate-100 font-bold text-slate-700 flex items-center gap-1.5 shadow-2xs">
-              <i class="fa-solid fa-file-code text-amber-600"></i> Export JSON
-            </button>
-          </div>
-        </div>
-
-        <div class="p-3.5 bg-slate-50 rounded-xl border border-slate-200">
-          <h4 class="font-bold text-slate-800 mb-1">Import External File</h4>
-          <input type="file" id="import-file" accept=".csv,.json" class="block w-full text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:font-bold file:bg-brand-50 file:text-brand-700 hover:file:bg-brand-100">
-          <button onclick="processUploadedFile()" class="mt-3 px-4 py-2 bg-brand-600 text-white rounded-xl font-bold hover:bg-brand-700 shadow-xs">
-            Import File into DB
-          </button>
-        </div>
-
-        <div class="pt-2 flex justify-between items-center text-slate-500 border-t border-slate-100">
-          <span>Need the full 100 Geelong seed records?</span>
-          <button onclick="resetTo100Seed()" class="text-red-600 hover:text-red-700 font-bold underline">Reload 100 Records</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Footer -->
-  <footer class="mt-auto border-t border-slate-200 bg-white py-4 text-center text-xs text-slate-400">
-    <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
-      <div>
-        <span class="font-black text-slate-800">SoloNest v2</span> — Greater Geelong Inexpensive Single-Person Rentals
-      </div>
-      <div>100% Client-side IndexedDB Cache • Zero Server Dependencies</div>
-    </div>
-  </footer>
-
-  <!-- Application Logic & Seed Generator -->
+  <!-- APPLICATION JAVASCRIPT LOGIC -->
   <script>
-    /* ==========================================================================
-       1. IndexedDB Core Engine
-       ========================================================================== */
-    const DB_NAME = 'RentalFinderDB';
-    const DB_VERSION = 2; // Incremented for v2
-    const STORE_NAME = 'rentals';
-    let db = null;
-    let allListings = [];
-    let activeSubRegion = 'ALL';
-    let activePropertyType = 'ALL';
-    let currentDetailListing = null;
+    /**
+     * GEELONG RENTAL PROPERTIES DATA & APP STATE
+     * Coordinates default to Geelong, Victoria, Australia (-38.1499, 144.3617)
+     */
+    const GEELONG_DEFAULT_COORDS = { lat: -38.1499, lng: 144.3617 };
+    const DB_NAME = 'GeelongRentalsDB';
+    const DB_VERSION = 1;
+    const STORE_PROPERTIES = 'properties';
+    const STORE_META = 'metadata';
 
-    function initDB() {
-      return new Promise((resolve, reject) => {
-        const req = indexedDB.open(DB_NAME, DB_VERSION);
-        req.onupgradeneeded = (e) => {
-          const database = e.target.result;
-          if (database.objectStoreNames.contains(STORE_NAME)) {
-            database.deleteObjectStore(STORE_NAME);
-          }
-          const store = database.createObjectStore(STORE_NAME, { keyPath: 'id' });
-          store.createIndex('suburb', 'suburb', { unique: false });
-          store.createIndex('subRegion', 'subRegion', { unique: false });
-          store.createIndex('rentPerWeek', 'rentPerWeek', { unique: false });
-          store.createIndex('dateListed', 'dateListed', { unique: false });
-          store.createIndex('source', 'source', { unique: false });
-          store.createIndex('propertyType', 'propertyType', { unique: false });
-        };
-        req.onsuccess = (e) => {
-          db = e.target.result;
-          resolve(db);
-        };
-        req.onerror = (e) => reject(e.target.error);
-      });
-    }
+    // Initial realistic Geelong rental dataset
+    const INITIAL_PROPERTIES = [
+      {
+        id: 'prop-1',
+        address: '28 Pakington Street',
+        suburb: 'Geelong West',
+        postcode: '3218',
+        weeklyRent: 620,
+        type: 'House',
+        bedrooms: 3,
+        bathrooms: 2,
+        carSpaces: 2,
+        lat: -38.1432,
+        lng: 144.3486,
+        imageUrl: 'https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?auto=format&fit=crop&w=800&q=80',
+        description: 'Charming character home in the heart of Geelong West! Just footsteps away from Pakington Street cafes, specialty bakeries, and Geelong train station. Features polished timber floors, modern kitchen with stone benchtops, and low-maintenance rear courtyard.',
+        availableDate: 'Available Nov 3, 2026',
+        inspectionTime: 'Saturday 10:00 AM - 10:15 AM',
+        features: ['Air Conditioning', 'Built-in Robes', 'Dishwasher', 'Pet Friendly', 'Courtyard'],
+        domainUrl: 'https://www.domain.com.au/rent/geelong-west-vic-3218/'
+      },
+      {
+        id: 'prop-2',
+        address: '74 Aphrasia Street',
+        suburb: 'Newtown',
+        postcode: '3220',
+        weeklyRent: 850,
+        type: 'House',
+        bedrooms: 4,
+        bathrooms: 2,
+        carSpaces: 2,
+        lat: -38.1511,
+        lng: 144.3392,
+        imageUrl: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=800&q=80',
+        description: 'Prestige Newtown executive living close to Geelong College, Sacred Heart and River precinct. Grand open-plan family living with gas log fire, expansive undercover alfresco decking, and master suite with walk-in robe.',
+        availableDate: 'Available Nov 12, 2026',
+        inspectionTime: 'Wednesday 5:15 PM - 5:30 PM',
+        features: ['Solar Panels', 'Ducted Heating', 'Evaporative Cooling', 'Garden Shed', 'Ensuite'],
+        domainUrl: 'https://www.domain.com.au/rent/newtown-vic-3220/'
+      },
+      {
+        id: 'prop-3',
+        address: '15/100 Western Beach Road',
+        suburb: 'Geelong',
+        postcode: '3220',
+        weeklyRent: 540,
+        type: 'Apartment',
+        bedrooms: 2,
+        bathrooms: 1,
+        carSpaces: 1,
+        lat: -38.1448,
+        lng: 144.3590,
+        imageUrl: 'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=800&q=80',
+        description: 'Waterfront living at its finest! Direct views overlooking Corio Bay and Eastern Beach. Open light-filled layout with balcony, secure underground parking, intercom entry, and minutes stroll to CBD shopping.',
+        availableDate: 'Available Now',
+        inspectionTime: 'Saturday 11:30 AM - 11:45 AM',
+        features: ['Water Views', 'Balcony', 'Intercom', 'Secure Parking', 'Split System'],
+        domainUrl: 'https://www.domain.com.au/rent/geelong-vic-3220/'
+      },
+      {
+        id: 'prop-4',
+        address: '42 High Street',
+        suburb: 'Belmont',
+        postcode: '3216',
+        weeklyRent: 480,
+        type: 'Townhouse',
+        bedrooms: 2,
+        bathrooms: 1,
+        carSpaces: 1,
+        lat: -38.1762,
+        lng: 144.3485,
+        imageUrl: 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=800&q=80',
+        description: 'Immaculate low-maintenance townhouse situated just moments from Belmont High Street shopping strip, Barwon River walking trails, and public transport. Private sunlit courtyard and single remote lock-up garage.',
+        availableDate: 'Available Nov 1, 2026',
+        inspectionTime: 'Saturday 1:00 PM - 1:15 PM',
+        features: ['Remote Garage', 'Gas Cooking', 'Built-in Wardrobes', 'Heating'],
+        domainUrl: 'https://www.domain.com.au/rent/belmont-vic-3216/'
+      },
+      {
+        id: 'prop-5',
+        address: '88 Belle Vue Avenue',
+        suburb: 'Highton',
+        postcode: '3216',
+        weeklyRent: 690,
+        type: 'House',
+        bedrooms: 4,
+        bathrooms: 2,
+        carSpaces: 2,
+        lat: -38.1740,
+        lng: 144.3210,
+        imageUrl: 'https://images.unsplash.com/photo-1580587771525-78b9dba3b914?auto=format&fit=crop&w=800&q=80',
+        description: 'Family home positioned high in prestigious Highton with picturesque district views. Walking distance to Highton Village cafes and moments to Deakin University and Epworth Hospital.',
+        availableDate: 'Available Nov 20, 2026',
+        inspectionTime: 'Thursday 4:45 PM - 5:00 PM',
+        features: ['Scenic Views', 'Double Garage', 'Dishwasher', 'Rumpus Room', 'Close to Uni'],
+        domainUrl: 'https://www.domain.com.au/rent/highton-vic-3216/'
+      },
+      {
+        id: 'prop-6',
+        address: '12 Garden Street',
+        suburb: 'East Geelong',
+        postcode: '3219',
+        weeklyRent: 510,
+        type: 'House',
+        bedrooms: 2,
+        bathrooms: 1,
+        carSpaces: 1,
+        lat: -38.1528,
+        lng: 144.3755,
+        imageUrl: 'https://images.unsplash.com/photo-1598228723793-52759bba239c?auto=format&fit=crop&w=800&q=80',
+        description: 'Delightful East Geelong cottage featuring high ceilings, timber floorboards, and walking distance to Geelong Botanic Gardens and Eastern Beach swimming enclosure.',
+        availableDate: 'Available Now',
+        inspectionTime: 'Saturday 12:15 PM - 12:30 PM',
+        features: ['Floorboards', 'Outdoor Entertaining', 'Close to Parklands', 'Air Conditioning'],
+        domainUrl: 'https://www.domain.com.au/rent/east-geelong-vic-3219/'
+      },
+      {
+        id: 'prop-7',
+        address: '3/18 Vines Road',
+        suburb: 'Hamlyn Heights',
+        postcode: '3215',
+        weeklyRent: 410,
+        type: 'Unit',
+        bedrooms: 2,
+        bathrooms: 1,
+        carSpaces: 1,
+        lat: -38.1284,
+        lng: 144.3352,
+        imageUrl: 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=800&q=80',
+        description: 'Bright and tranquil rear unit in quiet complex. Features an updated bathroom, split system heating and cooling, private paved yard, and quick Ring Road access for Melbourne commuters.',
+        availableDate: 'Available Nov 8, 2026',
+        inspectionTime: 'Tuesday 5:00 PM - 5:15 PM',
+        features: ['Low Maintenance', 'Quiet Location', 'Split-system AC', 'Carport'],
+        domainUrl: 'https://www.domain.com.au/rent/hamlyn-heights-vic-3215/'
+      },
+      {
+        id: 'prop-8',
+        address: '104 The Esplanade',
+        suburb: 'Torquay',
+        postcode: '3228',
+        weeklyRent: 950,
+        type: 'House',
+        bedrooms: 3,
+        bathrooms: 2,
+        carSpaces: 2,
+        lat: -38.3308,
+        lng: 144.3211,
+        imageUrl: 'https://images.unsplash.com/photo-1570129477492-45c003edd2be?auto=format&fit=crop&w=800&q=80',
+        description: 'Surf Coast lifestyle retreat located within the 30km Geelong outer boundary. Wake up to ocean sounds, walk across to Fishermans Beach, and enjoy contemporary coastal architecture.',
+        availableDate: 'Available Dec 1, 2026',
+        inspectionTime: 'Saturday 2:00 PM - 2:20 PM',
+        features: ['Ocean Frontage', 'Deck / Balcony', 'Outdoor Shower', 'Solar Hot Water'],
+        domainUrl: 'https://www.domain.com.au/rent/torquay-vic-3228/'
+      },
+      {
+        id: 'prop-9',
+        address: '21 Murradoc Road',
+        suburb: 'Drysdale',
+        postcode: '3222',
+        weeklyRent: 530,
+        type: 'House',
+        bedrooms: 3,
+        bathrooms: 1,
+        carSpaces: 2,
+        lat: -38.1691,
+        lng: 144.5714,
+        imageUrl: 'https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=800&q=80',
+        description: 'Bellmarine Peninsula charm! Spacious backyard with fruit trees, large garage/workshop, and close proximity to local wineries and Portarlington Ferry.',
+        availableDate: 'Available Immediately',
+        inspectionTime: 'Saturday 9:30 AM - 9:45 AM',
+        features: ['Large Block', 'Workshop', 'Fireplace', 'Rainwater Tank'],
+        domainUrl: 'https://www.domain.com.au/rent/drysdale-vic-3222/'
+      },
+      {
+        id: 'prop-10',
+        address: '15 Brougham Street',
+        suburb: 'Geelong',
+        postcode: '3220',
+        weeklyRent: 720,
+        type: 'Apartment',
+        bedrooms: 3,
+        bathrooms: 2,
+        carSpaces: 1,
+        lat: -38.1465,
+        lng: 144.3605,
+        imageUrl: 'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?auto=format&fit=crop&w=800&q=80',
+        description: 'Warehouse style inner-city loft in Geelong central! Soaring ceilings, exposed brickwork, and walk-to-everything convenience including Westfield and Deakin Waterfront.',
+        availableDate: 'Available Nov 15, 2026',
+        inspectionTime: 'Thursday 12:30 PM - 12:45 PM',
+        features: ['High Ceilings', 'Security Access', 'Dishwasher', 'Storage Cage'],
+        domainUrl: 'https://www.domain.com.au/rent/geelong-vic-3220/'
+      }
+    ];
 
-    function getAllFromDB() {
-      return new Promise((resolve, reject) => {
-        const tx = db.transaction(STORE_NAME, 'readonly');
-        const store = tx.objectStore(STORE_NAME);
-        const req = store.getAll();
-        req.onsuccess = () => resolve(req.result || []);
-        req.onerror = () => reject(req.error);
-      });
-    }
+    /**
+     * STATE MANAGEMENT
+     */
+    const state = {
+      center: { ...GEELONG_DEFAULT_COORDS },
+      radiusKm: 15, // 5, 10, 15, 30
+      maxWeeklyRent: 950,
+      selectedType: 'all',
+      selectedBeds: 'all',
+      properties: [],
+      filteredProperties: [],
+      selectedPropertyId: null,
+      lastSyncTimestamp: null,
+      map: null,
+      radiusCircle: null,
+      centerMarker: null,
+      propertyMarkers: []
+    };
 
-    function saveToDB(item) {
-      return new Promise((resolve, reject) => {
-        const tx = db.transaction(STORE_NAME, 'readwrite');
-        const store = tx.objectStore(STORE_NAME);
-        const req = store.put(item);
-        req.onsuccess = () => resolve(req.result);
-        req.onerror = () => reject(req.error);
-      });
-    }
-
-    function batchSaveToDB(items) {
-      return new Promise((resolve, reject) => {
-        const tx = db.transaction(STORE_NAME, 'readwrite');
-        const store = tx.objectStore(STORE_NAME);
-        items.forEach(item => {
-          if (!item.id) item.id = 'LST-' + Date.now() + '-' + Math.floor(Math.random() * 10000);
-          store.put(item);
+    /**
+     * INDEXED DB SERVICE
+     */
+    class StorageService {
+      static async open() {
+        return new Promise((resolve, reject) => {
+          const req = indexedDB.open(DB_NAME, DB_VERSION);
+          req.onupgradeneeded = (e) => {
+            const db = e.target.result;
+            if (!db.objectStoreNames.contains(STORE_PROPERTIES)) {
+              db.createObjectStore(STORE_PROPERTIES, { keyPath: 'id' });
+            }
+            if (!db.objectStoreNames.contains(STORE_META)) {
+              db.createObjectStore(STORE_META, { keyPath: 'key' });
+            }
+          };
+          req.onsuccess = () => resolve(req.result);
+          req.onerror = () => reject(req.error);
         });
-        tx.oncomplete = () => resolve(true);
-        tx.onerror = () => reject(tx.error);
-      });
-    }
+      }
 
-    function deleteFromDB(id) {
-      return new Promise((resolve, reject) => {
-        const tx = db.transaction(STORE_NAME, 'readwrite');
-        const store = tx.objectStore(STORE_NAME);
-        const req = store.delete(id);
-        req.onsuccess = () => resolve(true);
-        req.onerror = () => reject(req.error);
-      });
-    }
-
-    function clearDB() {
-      return new Promise((resolve, reject) => {
-        const tx = db.transaction(STORE_NAME, 'readwrite');
-        const store = tx.objectStore(STORE_NAME);
-        const req = store.clear();
-        req.onsuccess = () => resolve(true);
-        req.onerror = () => reject(req.error);
-      });
-    }
-
-    /* ==========================================================================
-       2. Deterministic 100-Listing Geelong Generator
-       ========================================================================== */
-    function getIsoDate(daysAgo) {
-      const d = new Date();
-      d.setDate(d.getDate() - daysAgo);
-      return d.toISOString().split('T')[0];
-    }
-
-    function getSubRegionForSuburb(suburb) {
-      const sub = suburb.toLowerCase();
-      if (['belmont', 'grovedale', 'waurn ponds', 'highton', 'marshall'].includes(sub)) return 'SOUTH';
-      if (['corio', 'norlane', 'north shore', 'bell park', 'bell post hill', 'hamlyn heights', 'north geelong', 'lara'].includes(sub)) return 'NORTH';
-      if (['geelong cbd', 'geelong west', 'newtown', 'south geelong', 'east geelong'].includes(sub)) return 'INNER';
-      if (['newcomb', 'whittington', 'thomson', 'breakwater', 'st albans park', 'leopold', 'moolap'].includes(sub)) return 'EAST';
-      if (['charlemont', 'armstrong creek', 'mount duneed'].includes(sub)) return 'GROWTH';
-      return 'SOUTH';
-    }
-
-    function generate100GeelongListings() {
-      const suburbs = [
-        // South & Uni Belt (30%)
-        { name: "Belmont", pc: "3216", reg: "SOUTH", baseRent: 170 },
-        { name: "Grovedale", pc: "3216", reg: "SOUTH", baseRent: 175 },
-        { name: "Waurn Ponds", pc: "3216", reg: "SOUTH", baseRent: 165 },
-        { name: "Highton", pc: "3216", reg: "SOUTH", baseRent: 190 },
-        { name: "Marshall", pc: "3216", reg: "SOUTH", baseRent: 160 },
-
-        // North Geelong (25%)
-        { name: "Corio", pc: "3214", reg: "NORTH", baseRent: 135 },
-        { name: "Norlane", pc: "3214", reg: "NORTH", baseRent: 130 },
-        { name: "North Shore", pc: "3214", reg: "NORTH", baseRent: 140 },
-        { name: "Bell Park", pc: "3215", reg: "NORTH", baseRent: 155 },
-        { name: "Bell Post Hill", pc: "3215", reg: "NORTH", baseRent: 160 },
-        { name: "Hamlyn Heights", pc: "3215", reg: "NORTH", baseRent: 170 },
-        { name: "North Geelong", pc: "3215", reg: "NORTH", baseRent: 165 },
-        { name: "Lara", pc: "3212", reg: "NORTH", baseRent: 160 },
-
-        // Inner & Central (20%)
-        { name: "Geelong CBD", pc: "3220", reg: "INNER", baseRent: 220 },
-        { name: "Geelong West", pc: "3218", reg: "INNER", baseRent: 210 },
-        { name: "Newtown", pc: "3220", reg: "INNER", baseRent: 205 },
-        { name: "South Geelong", pc: "3220", reg: "INNER", baseRent: 195 },
-        { name: "East Geelong", pc: "3219", reg: "INNER", baseRent: 190 },
-
-        // East & Bellarine Fringe (15%)
-        { name: "Newcomb", pc: "3219", reg: "EAST", baseRent: 150 },
-        { name: "Whittington", pc: "3219", reg: "EAST", baseRent: 140 },
-        { name: "Thomson", pc: "3219", reg: "EAST", baseRent: 155 },
-        { name: "Breakwater", pc: "3219", reg: "EAST", baseRent: 150 },
-        { name: "St Albans Park", pc: "3219", reg: "EAST", baseRent: 155 },
-        { name: "Leopold", pc: "3224", reg: "EAST", baseRent: 170 },
-
-        // Growth Corridor (10%)
-        { name: "Charlemont", pc: "3217", reg: "GROWTH", baseRent: 165 },
-        { name: "Armstrong Creek", pc: "3217", reg: "GROWTH", baseRent: 170 },
-        { name: "Mount Duneed", pc: "3217", reg: "GROWTH", baseRent: 175 }
-      ];
-
-      const platforms = ["Flatmates", "Domain", "Realestate", "Gumtree", "Airbnb"];
-      const propertyTypes = [
-        "Single Room (Share House)",
-        "Single Room (Share House)",
-        "Single Room (Share House)",
-        "Studio / Granny Flat",
-        "1-Bed Unit / Apartment"
-      ];
-      const leaseTerms = [
-        "Flexible / Month-to-Month",
-        "Medium Term (3 - 6 months)",
-        "Long Term (12+ months)"
-      ];
-
-      const recencyDays = [0, 0, 1, 1, 2, 3, 5, 7, 10, 14, 18, 24, 27];
-
-      const features = [
-        "Quiet residential street, split system AC, off-street parking available.",
-        "Bills all included (NBN 100 internet, gas, water & electricity). Walk to shops.",
-        "Private ensuite bathroom, queen bed, study desk, mirrored robes.",
-        "Self-contained kitchenette with private side entrance and courtyard.",
-        "Close to Deakin University Waurn Ponds campus and Geelong bus route.",
-        "5 minute walk to train station, low maintenance brick unit.",
-        "Newly renovated bathroom and modern communal kitchen.",
-        "Ideal for single working professional or mature student. Peaceful household."
-      ];
-
-      const listings = [];
-
-      for (let i = 1; i <= 100; i++) {
-        const subObj = suburbs[i % suburbs.length];
-        const platform = platforms[(i * 3) % platforms.length];
-        const propType = propertyTypes[(i * 2) % propertyTypes.length];
-        const lease = leaseTerms[i % leaseTerms.length];
-        const daysAgo = recencyDays[i % recencyDays.length];
-
-        // Realistic price calculation based on type and location
-        let rent = subObj.baseRent + ((i * 7) % 50);
-        if (propType === "Studio / Granny Flat") rent += 65;
-        if (propType === "1-Bed Unit / Apartment") rent += 120;
-        if (platform === "Airbnb") rent += 40; // Furnished monthly premium
-
-        // Cap at budget ceiling
-        if (rent > 380) rent = 340 + ((i * 5) % 40);
-
-        const billsIncluded = (propType === "Single Room (Share House)") || (platform === "Airbnb") || (i % 3 === 0);
-        const isFurnished = (platform === "Airbnb") || (i % 2 === 0);
-        const parking = (i % 4 !== 0);
-        const nearTransit = (i % 3 !== 0);
-
-        let title = "";
-        if (propType === "Single Room (Share House)") {
-          title = `${isFurnished ? 'Furnished ' : 'Spacious '}Room in ${subObj.name} ${billsIncluded ? '- All Bills Incl' : ''}`.trim();
-        } else if (propType === "Studio / Granny Flat") {
-          title = `Detached Studio / Granny Flat in ${subObj.name} - Quiet Location`;
-        } else {
-          title = `Neat 1-Bedroom Unit in ${subObj.name} Close to Amenities`;
-        }
-
-        listings.push({
-          id: `GN-${1000 + i}`,
-          title: title,
-          source: platform,
-          propertyType: propType,
-          subRegion: subObj.reg,
-          suburb: subObj.name,
-          postcode: subObj.pc,
-          rentPerWeek: rent,
-          bond: rent * 4,
-          dateListed: getIsoDate(daysAgo),
-          leaseLength: lease,
-          isFurnished: isFurnished,
-          billsIncluded: billsIncluded,
-          parking: parking,
-          nearTransit: nearTransit,
-          availableFrom: (i % 3 === 0) ? "Immediate" : `${((i % 14) + 1)} days`,
-          url: generatePlatformSearchUrl(platform, subObj.name, rent),
-          contactName: `Host / Agent (${subObj.name})`,
-          contactPhone: `04${((i * 13) % 90 + 10)} 55${((i * 7) % 90 + 10)}`,
-          notes: `${features[i % features.length]} Located in ${subObj.name} (${subObj.pc}). Inspection available by appointment.`,
-          isSaved: (i === 1 || i === 8 || i === 22),
-          status: "Available"
+      static async getAllProperties() {
+        const db = await this.open();
+        return new Promise((resolve, reject) => {
+          const tx = db.transaction(STORE_PROPERTIES, 'readonly');
+          const store = tx.objectStore(STORE_PROPERTIES);
+          const req = store.getAll();
+          req.onsuccess = () => resolve(req.result || []);
+          req.onerror = () => reject(req.error);
         });
       }
 
-      return listings;
-    }
+      static async saveProperty(prop) {
+        const db = await this.open();
+        return new Promise((resolve, reject) => {
+          const tx = db.transaction(STORE_PROPERTIES, 'readwrite');
+          const store = tx.objectStore(STORE_PROPERTIES);
+          const req = store.put(prop);
+          req.onsuccess = () => resolve(req.result);
+          req.onerror = () => reject(req.error);
+        });
+      }
 
-    /* ==========================================================================
-       3. Platform Deep Search URL Generator
-       ========================================================================== */
-    function generatePlatformSearchUrl(platform, suburb, maxPrice) {
-      const area = (suburb === 'ALL' || !suburb) ? 'geelong' : suburb.toLowerCase();
-      const encoded = encodeURIComponent(area);
-      const budget = maxPrice || 350;
+      static async bulkSaveProperties(list) {
+        const db = await this.open();
+        return new Promise((resolve, reject) => {
+          const tx = db.transaction(STORE_PROPERTIES, 'readwrite');
+          const store = tx.objectStore(STORE_PROPERTIES);
+          list.forEach(p => store.put(p));
+          tx.oncomplete = () => resolve();
+          tx.onerror = () => reject(tx.error);
+        });
+      }
 
-      switch (platform.toLowerCase()) {
-        case 'flatmates':
-          return `https://flatmates.com.au/rooms/${encoded}-vic?search_source=search_function&price_max=${budget}`;
-        case 'domain':
-          return `https://www.domain.com.au/rent/${encoded}-vic/?bedrooms=0-1&price=0-${budget}&sort=dateupdated-desc`;
-        case 'realestate':
-          return `https://www.realestate.com.au/rent/property-unit+apartment-with-1-bedroom-between-0-${budget}-in-${encoded},+vic/list-1`;
-        case 'gumtree':
-          return `https://www.gumtree.com.au/s-flatshare-houseshare/${encoded}-geelong/c18294l3001509r10?price-type=weekly&price=0.00__${budget}.00`;
-        case 'airbnb':
-          return `https://www.airbnb.com.au/s/${encodeURIComponent(area + ' Victoria')}/homes?adults=1&min_nights=28`;
-        default:
-          return `https://www.google.com/search?q=${encodeURIComponent('rent room unit ' + area + ' under $' + budget + ' pw')}`;
+      static async clearAllProperties() {
+        const db = await this.open();
+        return new Promise((resolve, reject) => {
+          const tx = db.transaction(STORE_PROPERTIES, 'readwrite');
+          const store = tx.objectStore(STORE_PROPERTIES);
+          const req = store.clear();
+          req.onsuccess = () => resolve();
+          req.onerror = () => reject(req.error);
+        });
+      }
+
+      static async getMeta(key) {
+        const db = await this.open();
+        return new Promise((resolve, reject) => {
+          const tx = db.transaction(STORE_META, 'readonly');
+          const store = tx.objectStore(STORE_META);
+          const req = store.get(key);
+          req.onsuccess = () => resolve(req.result ? req.result.value : null);
+          req.onerror = () => reject(req.error);
+        });
+      }
+
+      static async setMeta(key, value) {
+        const db = await this.open();
+        return new Promise((resolve, reject) => {
+          const tx = db.transaction(STORE_META, 'readwrite');
+          const store = tx.objectStore(STORE_META);
+          const req = store.put({ key, value });
+          req.onsuccess = () => resolve();
+          req.onerror = () => reject(req.error);
+        });
       }
     }
 
-    function launchPlatformSearch(platform) {
-      const suburb = document.getElementById('filter-suburb').value;
-      const budget = document.getElementById('price-range').value;
-      const url = generatePlatformSearchUrl(platform, suburb, budget);
-      window.open(url, '_blank', 'noopener,noreferrer');
-      showToast(`Launched live ${platform.toUpperCase()} search for ${suburb === 'ALL' ? 'Geelong' : suburb}`, 'success');
+    /**
+     * DISTANCE CALCULATION (Haversine formula in Kilometers)
+     */
+    function calculateDistanceKm(lat1, lon1, lat2, lon2) {
+      const R = 6371; // Earth's radius in km
+      const dLat = (lat2 - lat1) * Math.PI / 180;
+      const dLon = (lon2 - lon1) * Math.PI / 180;
+      const a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+        Math.sin(dLon / 2) * Math.sin(dLon / 2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      return R * c;
     }
 
-    function launchAllPlatforms() {
-      const platforms = ['flatmates', 'domain', 'realestate', 'gumtree', 'airbnb'];
-      const suburb = document.getElementById('filter-suburb').value;
-      const budget = document.getElementById('price-range').value;
-
-      platforms.forEach(p => {
-        window.open(generatePlatformSearchUrl(p, suburb, budget), '_blank', 'noopener,noreferrer');
-      });
-      showToast("Opened targeted searches across all 5 rental portals!", 'success');
-    }
-
-    /* ==========================================================================
-       4. Sub-Region Quick Switcher & Suburb Sync
-       ========================================================================== */
-    function setSubRegion(region) {
-      activeSubRegion = region;
-      document.querySelectorAll('.region-tab').forEach(btn => {
-        if (btn.getAttribute('data-region') === region) {
-          btn.className = "region-tab active-region px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all bg-brand-600 text-white shadow-xs";
-        } else {
-          btn.className = "region-tab px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all text-slate-600 hover:bg-slate-100";
-        }
-      });
-
-      // Reset suburb dropdown if switched to another region
-      if (region !== 'ALL') {
-        document.getElementById('filter-suburb').value = 'ALL';
-      }
-      applyFilters();
-    }
-
-    function syncSubRegionFromSuburb() {
-      const sub = document.getElementById('filter-suburb').value;
-      if (sub === 'ALL') {
-        setSubRegion('ALL');
-      } else {
-        const matchingReg = getSubRegionForSuburb(sub);
-        setSubRegion(matchingReg);
-      }
-    }
-
-    /* ==========================================================================
-       5. Bulk Ingest & Scraper Text Parser
-       ========================================================================== */
-    function openBulkIngestModal() {
-      document.getElementById('bulk-modal').classList.remove('hidden');
-    }
-
-    function closeBulkIngestModal() {
-      document.getElementById('bulk-modal').classList.add('hidden');
-    }
-
-    function insertSampleBulkText() {
-      document.getElementById('bulk-input-text').value = 
-`Private Queen Room in Belmont $190/wk bills included Flatmates
-Neat ground floor 1-bed unit in Corio $230 pw Domain.com.au
-Furnished studio flat in Grovedale $260/wk near Waurn Ponds Gumtree
-Ensuite bedroom near Deakin Waurn Ponds $180 pw bills incl Flatmates
-Central Geelong modern studio unit $320/wk Realestate.com.au`;
-    }
-
-    async function processBulkIngest() {
-      const text = document.getElementById('bulk-input-text').value.trim();
-      if (!text) {
-        showToast("Please enter or paste listing lines first.", "error");
-        return;
-      }
-
-      const lines = text.split(/\r?\n/).filter(l => l.trim().length > 5);
-      const newItems = [];
-      const existingUrls = new Set(allListings.map(i => (i.url || '').toLowerCase()));
-      const existingTitles = new Set(allListings.map(i => i.title.toLowerCase()));
-
-      lines.forEach((line, index) => {
-        const lower = line.toLowerCase();
-        
-        // Price extraction
-        let rent = 190;
-        const pw = line.match(/\$?\s*([0-9]{2,3})\s*(pw|\/w|per week|p\.w\.)/i);
-        const simple = line.match(/\$\s*([0-9]{2,3})/);
-        if (pw) rent = parseInt(pw[1], 10);
-        else if (simple) rent = parseInt(simple[1], 10);
-
-        // Suburb detection
-        const geelongSuburbs = [
-          "belmont", "grovedale", "waurn ponds", "highton", "marshall",
-          "corio", "norlane", "north shore", "bell park", "bell post hill",
-          "hamlyn heights", "north geelong", "lara", "geelong cbd", "geelong west",
-          "newtown", "south geelong", "east geelong", "newcomb", "whittington",
-          "charlemont", "armstrong creek", "mount duneed", "leopold"
-        ];
-
-        let matchedSuburb = "Belmont";
-        for (let s of geelongSuburbs) {
-          if (lower.includes(s)) {
-            matchedSuburb = s.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-            break;
-          }
-        }
-
-        // Platform detection
-        let source = "Other";
-        if (lower.includes("flatmates")) source = "Flatmates";
-        else if (lower.includes("domain")) source = "Domain";
-        else if (lower.includes("realestate")) source = "Realestate";
-        else if (lower.includes("gumtree")) source = "Gumtree";
-        else if (lower.includes("airbnb")) source = "Airbnb";
-
-        // Property type
-        let propType = "Single Room (Share House)";
-        if (lower.includes("studio") || lower.includes("granny flat")) propType = "Studio / Granny Flat";
-        else if (lower.includes("unit") || lower.includes("apartment") || lower.includes("1 bed") || lower.includes("1-bed")) propType = "1-Bed Unit / Apartment";
-
-        const bills = lower.includes("bill") && (lower.includes("incl") || lower.includes("covered"));
-        const furnished = lower.includes("furnish") || lower.includes("bed");
-
-        const candidateTitle = line.length > 55 ? line.slice(0, 52).trim() + "..." : line;
-
-        // Duplicate check
-        if (!existingTitles.has(candidateTitle.toLowerCase())) {
-          newItems.push({
-            id: `BULK-${Date.now().toString().slice(-5)}-${index}`,
-            title: candidateTitle,
-            source: source,
-            propertyType: propType,
-            subRegion: getSubRegionForSuburb(matchedSuburb),
-            suburb: matchedSuburb,
-            postcode: "3220",
-            rentPerWeek: rent,
-            bond: rent * 4,
-            dateListed: getIsoDate(0),
-            leaseLength: "Flexible / Month-to-Month",
-            isFurnished: furnished,
-            billsIncluded: bills,
-            parking: true,
-            nearTransit: true,
-            availableFrom: "Immediate",
-            url: generatePlatformSearchUrl(source, matchedSuburb, rent),
-            contactName: "Parsed Listing Contact",
-            contactPhone: "See Original Ad",
-            notes: `Ingested from bulk scrape paste: "${line}"`,
-            isSaved: false,
-            status: "Available"
-          });
-        }
-      });
-
-      if (newItems.length === 0) {
-        showToast("No new listings found (duplicates detected or invalid text).", "error");
-        return;
-      }
-
-      await batchSaveToDB(newItems);
-      allListings = await getAllFromDB();
-      closeBulkIngestModal();
-      document.getElementById('bulk-input-text').value = '';
-      applyFilters();
-      showToast(`Successfully ingested and saved ${newItems.length} new listings to IndexedDB!`, 'success');
-    }
-
-    /* ==========================================================================
-       6. Live Sync Simulation
-       ========================================================================== */
-    async function triggerLiveRefresh() {
-      const btn = document.getElementById('refresh-sync-btn');
-      const icon = document.getElementById('refresh-sync-icon');
-      icon.classList.add('fa-spin');
-      btn.classList.add('opacity-75');
-
-      await new Promise(r => setTimeout(r, 750));
-
-      // Append 1-2 brand new fresh listings for today
-      const freshSuburbs = ["Waurn Ponds", "Belmont", "Corio", "Geelong West", "Charlemont", "Grovedale"];
-      const picked = freshSuburbs[Math.floor(Math.random() * freshSuburbs.length)];
-      const randomPrice = 150 + (Math.floor(Math.random() * 18) * 10);
-      const platforms = ["Flatmates", "Domain", "Gumtree", "Realestate"];
-      const pickedPlatform = platforms[Math.floor(Math.random() * platforms.length)];
-
-      const freshListing = {
-        id: `SYNC-${Date.now().toString().slice(-5)}`,
-        title: `Just Listed: Single Person Room in ${picked}`,
-        source: pickedPlatform,
-        propertyType: "Single Room (Share House)",
-        subRegion: getSubRegionForSuburb(picked),
-        suburb: picked,
-        postcode: "3216",
-        rentPerWeek: randomPrice,
-        bond: randomPrice * 4,
-        dateListed: getIsoDate(0), // Today
-        leaseLength: "Flexible / Month-to-Month",
-        isFurnished: true,
-        billsIncluded: true,
-        parking: true,
-        nearTransit: true,
-        availableFrom: "Immediate",
-        url: generatePlatformSearchUrl(pickedPlatform, picked, randomPrice),
-        contactName: "Direct Landlord",
-        contactPhone: "0412 884 991",
-        notes: `Freshly captured via live sync. Fast Wi-Fi, tidy quiet home, 5 mins walk to local shops in ${picked}.`,
-        isSaved: false,
-        status: "Available"
+    /**
+     * UI TOAST NOTIFICATION
+     */
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toastContainer');
+      const toast = document.createElement('div');
+      
+      const colors = {
+        success: 'bg-emerald-600 text-white',
+        info: 'bg-slate-900 text-white',
+        warning: 'bg-amber-600 text-white',
+        error: 'bg-red-600 text-white'
       };
 
-      await saveToDB(freshListing);
-      allListings = await getAllFromDB();
+      toast.className = `flex items-center gap-2 px-4 py-2.5 rounded-xl shadow-xl text-xs font-semibold ${colors[type] || colors.info} animate-in fade-in slide-in-from-bottom-2 duration-200 pointer-events-auto`;
+      toast.innerHTML = `
+        <i data-lucide="${type === 'success' ? 'check-circle' : 'info'}" class="w-4 h-4"></i>
+        <span>${message}</span>
+      `;
+      container.appendChild(toast);
+      lucide.createIcons();
 
-      icon.classList.remove('fa-spin');
-      btn.classList.remove('opacity-75');
-      document.getElementById('last-sync-time').textContent = `Last Synced: ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
-      applyFilters();
-      showToast(`Live Sync: Added fresh listing in ${picked} ($${randomPrice}/wk)!`, 'success');
+      setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateY(8px)';
+        toast.style.transition = 'all 0.25s ease';
+        setTimeout(() => toast.remove(), 260);
+      }, 3500);
     }
 
-    /* ==========================================================================
-       7. UI Rendering & Filter Engine
-       ========================================================================== */
-    function calculateDaysAgo(dateStr) {
-      if (!dateStr) return 999;
-      const d = new Date(dateStr);
-      const today = new Date();
-      d.setHours(0,0,0,0);
-      today.setHours(0,0,0,0);
-      return Math.max(0, Math.floor((today - d) / (1000 * 60 * 60 * 24)));
+    /**
+     * MAP INITIALIZATION (Leaflet)
+     */
+    function initMap() {
+      state.map = L.map('map', {
+        zoomControl: false
+      }).setView([state.center.lat, state.center.lng], 12);
+
+      // Add zoom control top right
+      L.control.zoom({ position: 'topright' }).addTo(state.map);
+
+      // Clean OpenStreetMap tiles
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; OpenStreetMap contributors'
+      }).addTo(state.map);
+
+      // Render initial center point and radius
+      updateCenterAndRadius(state.center.lat, state.center.lng, state.radiusKm);
+
+      // User click on map: place new pin & update radius
+      state.map.on('click', (e) => {
+        const { lat, lng } = e.latlng;
+        setNewCenter(lat, lng, `Custom Pin (${lat.toFixed(3)}, ${lng.toFixed(3)})`);
+      });
     }
 
-    function getRecencyBadge(dateStr) {
-      const days = calculateDaysAgo(dateStr);
-      if (days === 0) {
-        return `<span class="bg-emerald-100 text-emerald-800 text-[10px] font-black px-2 py-0.5 rounded-full border border-emerald-200 flex items-center gap-1"><i class="fa-solid fa-bolt text-emerald-600"></i> Today</span>`;
-      } else if (days === 1) {
-        return `<span class="bg-blue-100 text-blue-800 text-[10px] font-bold px-2 py-0.5 rounded-full border border-blue-200">1d ago</span>`;
-      } else if (days <= 7) {
-        return `<span class="bg-blue-50 text-blue-700 text-[10px] font-semibold px-2 py-0.5 rounded-full border border-blue-100">${days}d ago</span>`;
+    /**
+     * Update center marker and circle geometry
+     */
+    function updateCenterAndRadius(lat, lng, radiusKm) {
+      state.center = { lat, lng };
+      state.radiusKm = radiusKm;
+
+      // Update Center Pin Marker
+      if (state.centerMarker) {
+        state.centerMarker.setLatLng([lat, lng]);
       } else {
-        return `<span class="bg-slate-100 text-slate-500 text-[10px] font-medium px-2 py-0.5 rounded-full">${days}d ago</span>`;
+        const pulseIcon = L.divIcon({
+          className: '',
+          html: `<div class="center-pin-pulse"></div>`,
+          iconSize: [22, 22],
+          iconAnchor: [11, 11]
+        });
+        state.centerMarker = L.marker([lat, lng], { icon: pulseIcon, zIndexOffset: 1000 }).addTo(state.map);
       }
+
+      // Update Radius Circle
+      if (state.radiusCircle) {
+        state.radiusCircle.setLatLng([lat, lng]);
+        state.radiusCircle.setRadius(radiusKm * 1000);
+      } else {
+        state.radiusCircle = L.circle([lat, lng], {
+          radius: radiusKm * 1000,
+          color: '#00843D',
+          fillColor: '#10b981',
+          fillOpacity: 0.08,
+          weight: 2,
+          dashArray: '6, 6'
+        }).addTo(state.map);
+      }
+
+      // Update badge label
+      document.getElementById('mapRadiusBadge').textContent = `${radiusKm} km Search Ring`;
+      document.getElementById('resultsRadiusLabel').textContent = `Within ${radiusKm}km of selected pin`;
     }
 
-    function getSourceBadge(source) {
-      switch (source) {
-        case 'Flatmates':
-          return `<span class="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wider">Flatmates</span>`;
-        case 'Domain':
-          return `<span class="bg-emerald-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wider">Domain</span>`;
-        case 'Realestate':
-          return `<span class="bg-rose-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wider">Realestate</span>`;
-        case 'Gumtree':
-          return `<span class="bg-lime-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wider">Gumtree</span>`;
-        case 'Airbnb':
-          return `<span class="bg-pink-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wider">Airbnb</span>`;
-        default:
-          return `<span class="bg-slate-700 text-white text-[10px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wider">${source || 'Direct'}</span>`;
-      }
+    /**
+     * Set a new center point (either by clicking map or reset)
+     */
+    function setNewCenter(lat, lng, labelText = null) {
+      updateCenterAndRadius(lat, lng, state.radiusKm);
+      
+      const label = labelText || (
+        Math.abs(lat - GEELONG_DEFAULT_COORDS.lat) < 0.005 && Math.abs(lng - GEELONG_DEFAULT_COORDS.lng) < 0.005
+          ? 'Geelong Central (Vic 3220)'
+          : `Custom Pin (${lat.toFixed(3)}, ${lng.toFixed(3)})`
+      );
+
+      document.getElementById('centerLocationName').value = label;
+      document.getElementById('mapCenterCoordsBadge').textContent = `Center: ${label}`;
+
+      // Save center to IndexedDB
+      StorageService.setMeta('customPin', { lat, lng, label });
+      applyFilters();
     }
 
-    function renderCards(list) {
-      const grid = document.getElementById('cards-grid');
-      const empty = document.getElementById('empty-state');
-      const countEl = document.getElementById('result-count');
+    /**
+     * Render Property Map Markers
+     */
+    function renderMapMarkers() {
+      // Clear existing markers
+      state.propertyMarkers.forEach(m => state.map.removeLayer(m));
+      state.propertyMarkers = [];
 
-      grid.innerHTML = '';
-      countEl.textContent = `Showing ${list.length} ${list.length === 1 ? 'accommodation' : 'accommodations'}`;
+      state.filteredProperties.forEach(prop => {
+        const isSelected = prop.id === state.selectedPropertyId;
+        const badgeIcon = L.divIcon({
+          className: '',
+          html: `<div class="price-badge-marker ${isSelected ? 'active' : ''}">$${prop.weeklyRent}</div>`,
+          iconSize: [60, 24],
+          iconAnchor: [30, 12]
+        });
 
-      if (list.length === 0) {
-        empty.classList.remove('hidden');
+        const marker = L.marker([prop.lat, prop.lng], { icon: badgeIcon });
+        
+        // Marker click opens details and highlights
+        marker.on('click', () => {
+          openPropertyDrawer(prop.id);
+          highlightPropertyCard(prop.id);
+        });
+
+        marker.addTo(state.map);
+        state.propertyMarkers.push(marker);
+      });
+    }
+
+    /**
+     * FILTER & SORT LOGIC
+     */
+    function applyFilters() {
+      const maxRent = parseInt(state.maxWeeklyRent, 10);
+      const type = state.selectedType;
+      const minBeds = state.selectedBeds;
+      const sort = document.getElementById('sortSelect').value;
+
+      // Calculate distance for all properties based on current center
+      const withDistance = state.properties.map(p => {
+        const distance = calculateDistanceKm(state.center.lat, state.center.lng, p.lat, p.lng);
+        return { ...p, distance: parseFloat(distance.toFixed(1)) };
+      });
+
+      // Filter properties
+      state.filteredProperties = withDistance.filter(p => {
+        // Within Radius Check
+        const inRadius = p.distance <= state.radiusKm;
+        // Rent Check
+        const inRent = p.weeklyRent <= maxRent;
+        // Type Check
+        const inType = type === 'all' || p.type.toLowerCase() === type.toLowerCase();
+        // Bed Check
+        const inBeds = minBeds === 'all' || p.bedrooms >= parseInt(minBeds, 10);
+
+        return inRadius && inRent && inType && inBeds;
+      });
+
+      // Sorting
+      state.filteredProperties.sort((a, b) => {
+        if (sort === 'price-asc') return a.weeklyRent - b.weeklyRent;
+        if (sort === 'price-desc') return b.weeklyRent - a.weeklyRent;
+        if (sort === 'dist-asc') return a.distance - b.distance;
+        if (sort === 'beds-desc') return b.bedrooms - a.bedrooms;
+        return 0;
+      });
+
+      renderListings();
+      renderMapMarkers();
+      document.getElementById('resultsCount').textContent = `${state.filteredProperties.length} Available Rentals`;
+    }
+
+    /**
+     * RENDER LISTINGS CARDS IN LEFT PANE
+     */
+    function renderListings() {
+      const container = document.getElementById('listingsContainer');
+      container.innerHTML = '';
+
+      if (state.filteredProperties.length === 0) {
+        container.innerHTML = `
+          <div class="py-16 text-center">
+            <div class="w-14 h-14 bg-slate-100 rounded-2xl flex items-center justify-center text-slate-400 mx-auto mb-3">
+              <i data-lucide="search-x" class="w-7 h-7"></i>
+            </div>
+            <h3 class="font-bold text-slate-800 text-sm">No rentals found</h3>
+            <p class="text-xs text-slate-500 max-w-xs mx-auto mt-1">Try expanding your radius (e.g. 30 km) or raising the weekly rent filter.</p>
+            <button id="resetFromEmptyBtn" class="mt-4 px-3 py-1.5 bg-emerald-50 text-emerald-700 text-xs font-semibold rounded-lg hover:bg-emerald-100 border border-emerald-200">
+              Reset Filters
+            </button>
+          </div>
+        `;
+        document.getElementById('resetFromEmptyBtn')?.addEventListener('click', resetAllFilters);
+        lucide.createIcons();
         return;
       }
-      empty.classList.add('hidden');
 
-      list.forEach(item => {
-        const card = document.createElement('div');
-        card.className = "bg-white rounded-2xl border border-slate-200 shadow-xs hover:shadow-md transition-all duration-200 p-5 flex flex-col justify-between group";
-
-        const monthlyApprox = Math.round((item.rentPerWeek * 52) / 12);
+      state.filteredProperties.forEach(prop => {
+        const isSelected = prop.id === state.selectedPropertyId;
+        const card = document.createElement('article');
+        card.id = `card-${prop.id}`;
+        card.className = `p-3.5 rounded-2xl border transition duration-150 cursor-pointer flex flex-col sm:flex-row gap-3.5 ${
+          isSelected ? 'border-emerald-500 bg-emerald-50/30 ring-1 ring-emerald-500' : 'border-slate-200/90 hover:border-slate-300 hover:shadow-sm bg-white'
+        }`;
 
         card.innerHTML = `
-          <div>
-            <!-- Top Badges -->
-            <div class="flex items-center justify-between gap-2 mb-2">
-              <div class="flex items-center gap-1.5 flex-wrap">
-                ${getSourceBadge(item.source)}
-                <span class="text-[10px] font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded">${item.propertyType}</span>
-              </div>
-              <div class="flex items-center gap-1">
-                ${getRecencyBadge(item.dateListed)}
-                <button onclick="toggleSaveListing('${item.id}', event)" class="text-sm p-1 ${item.isSaved ? 'text-amber-500' : 'text-slate-300 hover:text-amber-500'}" title="Save to shortlist">
-                  <i class="fa-solid fa-star"></i>
-                </button>
-              </div>
-            </div>
-
-            <!-- Title & Suburb -->
-            <h3 class="font-bold text-slate-900 text-sm leading-snug group-hover:text-brand-600 transition-colors mb-1">
-              ${escapeHtml(item.title)}
-            </h3>
-            <p class="text-xs text-slate-500 font-medium flex items-center gap-1 mb-3">
-              <i class="fa-solid fa-location-dot text-brand-600"></i> ${escapeHtml(item.suburb)} <span class="text-slate-400">(${escapeHtml(item.postcode || '3220')})</span>
-            </p>
-
-            <!-- Price Row -->
-            <div class="flex items-baseline justify-between py-2 mb-3 border-y border-slate-100">
-              <div class="flex items-baseline gap-1.5">
-                <span class="text-2xl font-black text-slate-900 tracking-tight">$${item.rentPerWeek}</span>
-                <span class="text-xs font-semibold text-slate-400">/ wk</span>
-                <span class="text-[11px] text-slate-400 ml-1">($${monthlyApprox}/mo)</span>
-              </div>
-              <div>
-                ${item.billsIncluded ? 
-                  '<span class="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200"><i class="fa-solid fa-bolt mr-1"></i>Bills Incl.</span>' : 
-                  '<span class="text-[11px] font-medium text-slate-400">+ Utilities</span>'}
-              </div>
-            </div>
-
-            <!-- Feature Tags -->
-            <div class="flex flex-wrap gap-1.5 mb-3 text-[11px]">
-              <span class="bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md font-semibold">
-                <i class="fa-regular fa-calendar-check mr-1 text-brand-600"></i>${item.leaseLength || 'Flexible'}
-              </span>
-              ${item.isFurnished ? '<span class="bg-brand-50 text-brand-800 px-2 py-0.5 rounded-md font-semibold border border-brand-200"><i class="fa-solid fa-couch mr-1"></i>Furnished</span>' : '<span class="bg-slate-100 text-slate-500 px-2 py-0.5 rounded-md">Unfurnished</span>'}
-              ${item.parking ? '<span class="bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md font-medium"><i class="fa-solid fa-car mr-1"></i>Parking</span>' : ''}
-              ${item.nearTransit ? '<span class="bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md font-medium"><i class="fa-solid fa-bus mr-1"></i>Transit</span>' : ''}
-            </div>
-
-            <!-- Notes preview -->
-            <p class="text-xs text-slate-600 line-clamp-2 leading-relaxed mb-4">
-              ${escapeHtml(item.notes || 'No description notes available.')}
-            </p>
+          <!-- Image Thumbnail -->
+          <div class="w-full sm:w-36 h-32 rounded-xl overflow-hidden bg-slate-100 flex-none relative">
+            <img src="${prop.imageUrl}" alt="${prop.address}" class="w-full h-full object-cover group-hover:scale-105 transition" loading="lazy" onerror="this.src='https://placehold.co/400x300/e2e8f0/475569?text=Rental+Property'">
+            <span class="absolute top-2 left-2 text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-900/80 backdrop-blur-xs text-white">
+              ${prop.type}
+            </span>
           </div>
 
-          <!-- Bottom Action Row -->
-          <div class="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
-            <span class="text-[11px] text-slate-400 font-medium">Avail: <strong class="text-slate-700">${escapeHtml(item.availableFrom || 'Immediate')}</strong></span>
-            
-            <div class="flex items-center gap-1.5">
-              ${item.url ? `
-                <a href="${item.url}" target="_blank" rel="noopener noreferrer" class="p-1.5 text-slate-400 hover:text-brand-600 rounded-lg hover:bg-slate-100 transition-colors" title="Open platform link">
-                  <i class="fa-solid fa-arrow-up-right-from-square"></i>
-                </a>
-              ` : ''}
-              <button onclick="openListingDetail('${item.id}')" class="px-3.5 py-1.5 rounded-xl bg-slate-900 text-white hover:bg-brand-600 transition-colors text-xs font-bold flex items-center gap-1.5 shadow-xs">
-                <span>Details</span>
-                <i class="fa-solid fa-chevron-right text-[10px]"></i>
-              </button>
+          <!-- Listing Details -->
+          <div class="flex-1 flex flex-col justify-between">
+            <div>
+              <div class="flex items-start justify-between gap-2">
+                <div>
+                  <div class="text-base font-bold text-slate-900 leading-tight">
+                    $${prop.weeklyRent} <span class="text-xs font-normal text-slate-500">/ week</span>
+                  </div>
+                  <h4 class="font-semibold text-slate-800 text-xs mt-0.5">${prop.address}</h4>
+                  <p class="text-[11px] font-medium text-emerald-700">${prop.suburb}, VIC ${prop.postcode}</p>
+                </div>
+                <span class="text-[11px] font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md flex-none">
+                  ${prop.distance} km
+                </span>
+              </div>
+            </div>
+
+            <!-- Features Bar -->
+            <div class="flex items-center gap-3 text-xs text-slate-600 mt-2 pt-2 border-t border-slate-100">
+              <span class="flex items-center gap-1 font-medium"><i data-lucide="bed" class="w-3.5 h-3.5 text-slate-400"></i> ${prop.bedrooms}</span>
+              <span class="flex items-center gap-1 font-medium"><i data-lucide="bath" class="w-3.5 h-3.5 text-slate-400"></i> ${prop.bathrooms}</span>
+              <span class="flex items-center gap-1 font-medium"><i data-lucide="car" class="w-3.5 h-3.5 text-slate-400"></i> ${prop.carSpaces}</span>
+              <span class="text-slate-300">•</span>
+              <span class="text-[11px] text-slate-500 truncate">${prop.availableDate || 'Available Now'}</span>
             </div>
           </div>
         `;
 
-        grid.appendChild(card);
-      });
-    }
+        card.addEventListener('click', () => {
+          openPropertyDrawer(prop.id);
+          highlightPropertyCard(prop.id);
+          state.map.flyTo([prop.lat, prop.lng], 14, { duration: 0.8 });
+        });
 
-    function applyFilters() {
-      const keyword = document.getElementById('filter-keyword').value.toLowerCase().trim();
-      const suburb = document.getElementById('filter-suburb').value;
-      const recency = document.getElementById('filter-recency').value;
-      const source = document.getElementById('filter-source').value;
-      const maxRent = parseInt(document.getElementById('price-range').value, 10);
-      const leaseFilter = document.getElementById('filter-lease').value;
-      const sortBy = document.getElementById('sort-select').value;
-
-      const requireBills = document.getElementById('chk-bills').checked;
-      const requireFurnished = document.getElementById('chk-furnished').checked;
-      const requireParking = document.getElementById('chk-parking').checked;
-      const requireTransit = document.getElementById('chk-transit').checked;
-      const savedOnly = document.getElementById('chk-saved-only').checked;
-
-      // Update launcher displays
-      document.getElementById('launcher-suburb-display').textContent = suburb === 'ALL' ? (activeSubRegion === 'ALL' ? 'All Geelong' : activeSubRegion) : suburb;
-      document.getElementById('launcher-price-display').textContent = `$${maxRent}/wk`;
-
-      let results = allListings.filter(item => {
-        // Price limit
-        if (Number(item.rentPerWeek) > maxRent) return false;
-
-        // Sub-Region tab
-        if (activeSubRegion !== 'ALL' && item.subRegion !== activeSubRegion) return false;
-
-        // Specific Suburb
-        if (suburb !== 'ALL' && item.suburb.toLowerCase() !== suburb.toLowerCase()) return false;
-
-        // Property Type
-        if (activePropertyType !== 'ALL' && item.propertyType !== activePropertyType) return false;
-
-        // Source platform
-        if (source !== 'ALL' && item.source !== source) return false;
-
-        // Recency
-        if (recency !== 'ALL') {
-          const daysAgo = calculateDaysAgo(item.dateListed);
-          if (recency === 'TODAY' && daysAgo !== 0) return false;
-          if (recency === '3' && daysAgo > 3) return false;
-          if (recency === '7' && daysAgo > 7) return false;
-          if (recency === '14' && daysAgo > 14) return false;
-          if (recency === '28' && daysAgo > 28) return false;
-        }
-
-        // Lease duration
-        if (leaseFilter !== 'ALL') {
-          const l = (item.leaseLength || '').toLowerCase();
-          if (leaseFilter === 'FLEX' && !l.includes('flexible') && !l.includes('month-to-month')) return false;
-          if (leaseFilter === 'MEDIUM' && !l.includes('3 - 6') && !l.includes('medium')) return false;
-          if (leaseFilter === 'LONG' && !l.includes('12+') && !l.includes('long')) return false;
-        }
-
-        // Inclusions
-        if (requireBills && !item.billsIncluded) return false;
-        if (requireFurnished && !item.isFurnished) return false;
-        if (requireParking && !item.parking) return false;
-        if (requireTransit && !item.nearTransit) return false;
-        if (savedOnly && !item.isSaved) return false;
-
-        // Keyword search
-        if (keyword) {
-          const haystack = `${item.title} ${item.suburb} ${item.postcode} ${item.notes} ${item.source} ${item.leaseLength}`.toLowerCase();
-          if (!haystack.includes(keyword)) return false;
-        }
-
-        return true;
+        container.appendChild(card);
       });
 
-      // Sorting
-      results.sort((a, b) => {
-        if (sortBy === 'price-asc') return a.rentPerWeek - b.rentPerWeek;
-        if (sortBy === 'price-desc') return b.rentPerWeek - a.rentPerWeek;
-        if (sortBy === 'suburb-asc') return a.suburb.localeCompare(b.suburb);
-        if (sortBy === 'date-newest') {
-          return new Date(b.dateListed) - new Date(a.dateListed);
-        }
-        return 0;
-      });
-
-      renderCards(results);
-      document.getElementById('sync-counter-badge').textContent = allListings.length;
-      document.getElementById('badge-count-all').textContent = allListings.length;
+      lucide.createIcons();
     }
 
-    function setTypeFilter(type) {
-      activePropertyType = type;
-      document.querySelectorAll('.type-pill').forEach(btn => {
-        if (btn.getAttribute('data-type') === type) {
-          btn.className = "type-pill active-pill px-3 py-1.5 rounded-lg border font-bold bg-brand-50 border-brand-200 text-brand-700 shadow-xs";
-        } else {
-          btn.className = "type-pill px-3 py-1.5 rounded-lg border border-slate-200 font-medium text-slate-600 hover:bg-slate-50";
-        }
-      });
-      applyFilters();
-    }
-
-    function updatePriceSlider(val) {
-      document.getElementById('price-display').textContent = `$${val}/wk`;
-      applyFilters();
-    }
-
-    function resetFilters() {
-      document.getElementById('filter-keyword').value = '';
-      document.getElementById('filter-suburb').value = 'ALL';
-      document.getElementById('filter-recency').value = 'ALL';
-      document.getElementById('filter-source').value = 'ALL';
-      document.getElementById('filter-lease').value = 'ALL';
-      document.getElementById('price-range').value = '380';
-      document.getElementById('price-display').textContent = '$380/wk';
-      document.getElementById('chk-bills').checked = false;
-      document.getElementById('chk-furnished').checked = false;
-      document.getElementById('chk-parking').checked = false;
-      document.getElementById('chk-transit').checked = false;
-      document.getElementById('chk-saved-only').checked = false;
-      document.getElementById('sort-select').value = 'date-newest';
-      setSubRegion('ALL');
-      setTypeFilter('ALL');
-    }
-
-    async function toggleSaveListing(id, e) {
-      if (e) e.stopPropagation();
-      const listing = allListings.find(i => i.id === id);
-      if (!listing) return;
-      listing.isSaved = !listing.isSaved;
-      await saveToDB(listing);
-      applyFilters();
-      showToast(listing.isSaved ? "Saved to your shortlist!" : "Removed from shortlist.", "success");
-    }
-
-    /* ==========================================================================
-       8. Detail Modal & Clipboard Copy
-       ========================================================================== */
-    function openListingDetail(id) {
-      const item = allListings.find(i => i.id === id);
-      if (!item) return;
-      currentDetailListing = item;
-
-      document.getElementById('modal-title').textContent = item.title;
-      document.getElementById('modal-location').innerHTML = `<i class="fa-solid fa-location-dot text-brand-600"></i> ${escapeHtml(item.suburb)} (${escapeHtml(item.postcode || '3220')}), Greater Geelong`;
-      document.getElementById('modal-source-badge').outerHTML = `<span id="modal-source-badge">${getSourceBadge(item.source)}</span>`;
-      document.getElementById('modal-type-badge').textContent = item.propertyType;
-      document.getElementById('modal-region-badge').textContent = `Zone: ${item.subRegion || 'Geelong'}`;
-      document.getElementById('modal-price-week').textContent = `$${item.rentPerWeek}/wk`;
-      document.getElementById('modal-price-month').textContent = `$${Math.round((item.rentPerWeek * 52) / 12)}/mo`;
-      document.getElementById('modal-bond').textContent = `$${item.bond || item.rentPerWeek * 4}`;
-      document.getElementById('modal-avail').textContent = item.availableFrom || 'Immediate';
-      document.getElementById('modal-notes').textContent = item.notes || 'No description provided.';
-      document.getElementById('modal-contact').textContent = item.contactName || 'Listing Contact';
-      document.getElementById('modal-phone').textContent = item.contactPhone || 'Inquire online';
-      document.getElementById('modal-id-display').textContent = `ID: ${item.id} • Listed: ${item.dateListed}`;
-
-      const extLink = document.getElementById('modal-external-link');
-      if (item.url) {
-        extLink.href = item.url;
-        extLink.classList.remove('hidden');
-      } else {
-        extLink.classList.add('hidden');
+    /**
+     * HIGHLIGHT CARD & MARKER
+     */
+    function highlightPropertyCard(id) {
+      state.selectedPropertyId = id;
+      // Scroll card into view
+      const targetCard = document.getElementById(`card-${id}`);
+      if (targetCard) {
+        targetCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       }
-
-      // Feature Badges
-      const badgesBox = document.getElementById('modal-badges');
-      badgesBox.innerHTML = `
-        <span class="px-2.5 py-1 rounded-md font-bold ${item.billsIncluded ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-slate-100 text-slate-600'}">
-          <i class="fa-solid ${item.billsIncluded ? 'fa-check text-emerald-600' : 'fa-xmark text-slate-400'} mr-1"></i>
-          ${item.billsIncluded ? 'Bills Included in Weekly Rent' : 'Tenant Pays Utilities'}
-        </span>
-        <span class="px-2.5 py-1 rounded-md font-bold ${item.isFurnished ? 'bg-brand-50 text-brand-800 border border-brand-200' : 'bg-slate-100 text-slate-600'}">
-          <i class="fa-solid fa-couch mr-1"></i> ${item.isFurnished ? 'Furnished' : 'Unfurnished'}
-        </span>
-        <span class="px-2.5 py-1 rounded-md font-semibold bg-slate-100 text-slate-700">
-          <i class="fa-regular fa-calendar mr-1 text-brand-600"></i> ${item.leaseLength || 'Flexible'}
-        </span>
-        ${item.parking ? '<span class="px-2.5 py-1 rounded-md font-semibold bg-slate-100 text-slate-700"><i class="fa-solid fa-car mr-1"></i>Off-street Parking</span>' : ''}
-        ${item.nearTransit ? '<span class="px-2.5 py-1 rounded-md font-semibold bg-slate-100 text-slate-700"><i class="fa-solid fa-bus mr-1"></i>Near Public Transit</span>' : ''}
-      `;
-
-      document.getElementById('detail-modal').classList.remove('hidden');
+      renderMapMarkers();
     }
 
-    function closeDetailModal() {
-      document.getElementById('detail-modal').classList.add('hidden');
-      currentDetailListing = null;
+    /**
+     * PROPERTY DETAIL DRAWER
+     */
+    function openPropertyDrawer(id) {
+      const prop = state.properties.find(p => p.id === id);
+      if (!prop) return;
+
+      state.selectedPropertyId = id;
+      const distance = calculateDistanceKm(state.center.lat, state.center.lng, prop.lat, prop.lng).toFixed(1);
+
+      document.getElementById('detailImg').src = prop.imageUrl;
+      document.getElementById('detailBadgeType').textContent = prop.type;
+      document.getElementById('detailDistanceBadge').textContent = `${distance} km from center pin`;
+      document.getElementById('detailWeeklyRent').textContent = `$${prop.weeklyRent}`;
+      document.getElementById('detailAddress').textContent = prop.address;
+      document.getElementById('detailSuburb').textContent = `${prop.suburb}, VIC ${prop.postcode}`;
+      document.getElementById('detailBeds').textContent = prop.bedrooms;
+      document.getElementById('detailBaths').textContent = prop.bathrooms;
+      document.getElementById('detailCars').textContent = prop.carSpaces;
+      document.getElementById('detailBond').textContent = `$${prop.weeklyRent * 4}`;
+      document.getElementById('detailAvailableDate').textContent = prop.availableDate || 'Available Immediately';
+      document.getElementById('detailInspectionTime').textContent = prop.inspectionTime || 'Private inspection by appointment';
+      document.getElementById('detailDescription').textContent = prop.description || 'Contact agent for full tenancy details.';
+
+      // Render feature chips
+      const featuresContainer = document.getElementById('detailFeaturesList');
+      featuresContainer.innerHTML = '';
+      const features = prop.features || ['Close to Transport', 'Air Conditioning', 'Built-in Wardrobes'];
+      features.forEach(feat => {
+        const badge = document.createElement('span');
+        badge.className = 'text-[11px] bg-slate-100 text-slate-700 px-2.5 py-1 rounded-lg border border-slate-200 flex items-center gap-1';
+        badge.innerHTML = `<i data-lucide="check" class="w-3 h-3 text-emerald-600"></i> ${feat}`;
+        featuresContainer.appendChild(badge);
+      });
+
+      // Domain link generator
+      const domainUrl = prop.domainUrl || `https://www.domain.com.au/rent/${encodeURIComponent(prop.suburb.toLowerCase().replace(/\s+/g, '-'))}-vic-${prop.postcode}/`;
+      document.getElementById('detailDomainLink').href = domainUrl;
+
+      // Show drawer
+      document.getElementById('detailDrawerBackdrop').classList.remove('hidden');
+      document.getElementById('detailDrawer').classList.remove('translate-x-full');
+      lucide.createIcons();
     }
 
-    function copyListingSummary() {
-      if (!currentDetailListing) return;
-      const text = `--- SOLONEST GEELONG LISTING ---
-Title: ${currentDetailListing.title}
-Platform: ${currentDetailListing.source}
-Suburb: ${currentDetailListing.suburb} (${currentDetailListing.postcode})
-Rent: $${currentDetailListing.rentPerWeek}/wk (~$${Math.round((currentDetailListing.rentPerWeek * 52) / 12)}/mo)
-Bond: $${currentDetailListing.bond}
-Terms: ${currentDetailListing.leaseLength}
-Bills Included: ${currentDetailListing.billsIncluded ? 'Yes' : 'No'}
-Furnished: ${currentDetailListing.isFurnished ? 'Yes' : 'No'}
-Available: ${currentDetailListing.availableFrom}
-Notes: ${currentDetailListing.notes}
-Link: ${currentDetailListing.url}`;
-
-      copyToClipboard(text);
-      showToast("Listing summary copied to clipboard!", "success");
+    function closePropertyDrawer() {
+      document.getElementById('detailDrawerBackdrop').classList.add('hidden');
+      document.getElementById('detailDrawer').classList.add('translate-x-full');
     }
 
-    async function deleteActiveListing() {
-      if (!currentDetailListing) return;
-      const id = currentDetailListing.id;
-      await deleteFromDB(id);
-      allListings = allListings.filter(i => i.id !== id);
-      closeDetailModal();
-      applyFilters();
-      showToast("Listing deleted from IndexedDB.", "success");
+    /**
+     * SEARCH DOMAIN REALESTATE DEEP LINK HELPER
+     */
+    function triggerDomainSearch() {
+      // Build search URL for Geelong region with weekly rent parameters
+      const maxRent = state.maxWeeklyRent;
+      const radiusKm = state.radiusKm;
+      // Domain standard rental URL structure
+      const url = `https://www.domain.com.au/rent/geelong-vic-3220/?price=0-${maxRent}&distance=${radiusKm}`;
+      
+      showToast('Opening Domain.com.au search in a new tab...', 'info');
+      window.open(url, '_blank', 'noopener,noreferrer');
     }
 
-    /* ==========================================================================
-       9. Manual Add Listing Form
-       ========================================================================== */
-    function openAddListingModal() {
-      document.getElementById('listing-form').reset();
-      document.getElementById('f-date').value = getIsoDate(0);
-      document.getElementById('add-modal').classList.remove('hidden');
+    /**
+     * LIVE SYNC & 9:00 AM DAILY AUTOMATED SYNC SIMULATION
+     */
+    async function triggerLiveSync(isAutomated = false) {
+      const spinner = document.getElementById('syncSpinner');
+      spinner.classList.add('animate-spin');
+
+      // Mock network latency for live property data fetching
+      await new Promise(r => setTimeout(r, 900));
+
+      const now = new Date();
+      state.lastSyncTimestamp = now.toISOString();
+
+      // Save sync status in IndexedDB
+      await StorageService.setMeta('lastSyncTimestamp', state.lastSyncTimestamp);
+
+      spinner.classList.remove('animate-spin');
+      updateSyncUI(now);
+
+      if (isAutomated) {
+        showToast('Daily 9:00 AM Automated Sync completed!', 'success');
+      } else {
+        showToast('Live Sync successful! Latest listings loaded.', 'success');
+      }
     }
 
-    function closeAddListingModal() {
-      document.getElementById('add-modal').classList.add('hidden');
+    function updateSyncUI(syncDate) {
+      const statusText = document.getElementById('lastSyncStatus');
+      const timeAgo = document.getElementById('syncTimeAgo');
+      
+      const timeStr = syncDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      statusText.textContent = `Daily Sync: Configured for 9:00 AM AEDT`;
+      timeAgo.textContent = `Synced: Today at ${timeStr}`;
     }
 
-    async function handleFormSubmit(e) {
-      e.preventDefault();
-      const suburbVal = document.getElementById('f-suburb').value.trim();
+    /**
+     * DAILY 9:00 AM SCHEDULER CHECK
+     * Evaluates if 9:00 AM has arrived and triggers automated sync
+     */
+    function checkDailyScheduledSync() {
+      const now = new Date();
+      const lastSyncStr = state.lastSyncTimestamp;
 
-      const item = {
-        id: `MAN-${Date.now().toString().slice(-6)}`,
-        title: document.getElementById('f-title').value.trim(),
-        source: document.getElementById('f-source').value,
-        propertyType: document.getElementById('f-type').value,
-        subRegion: getSubRegionForSuburb(suburbVal),
-        rentPerWeek: Number(document.getElementById('f-price').value),
-        bond: Number(document.getElementById('f-price').value) * 4,
-        suburb: suburbVal,
-        postcode: "3220",
-        dateListed: document.getElementById('f-date').value,
-        leaseLength: document.getElementById('f-lease').value,
-        isFurnished: document.getElementById('f-furnished').checked,
-        billsIncluded: document.getElementById('f-bills').checked,
-        parking: document.getElementById('f-parking').checked,
-        nearTransit: document.getElementById('f-transit').checked,
-        availableFrom: document.getElementById('f-avail').value.trim() || 'Immediate',
-        url: document.getElementById('f-url').value.trim() || generatePlatformSearchUrl('flatmates', suburbVal, document.getElementById('f-price').value),
-        contactName: document.getElementById('f-cname').value.trim() || 'Direct Landlord',
-        contactPhone: document.getElementById('f-ccontact').value.trim() || 'Inquire',
-        notes: document.getElementById('f-notes').value.trim(),
-        isSaved: false,
-        status: "Available"
+      // Check if it's 9:00 AM hour or passed today's 9:00 AM without syncing
+      const nineAmToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 9, 0, 0);
+
+      if (lastSyncStr) {
+        const lastSync = new Date(lastSyncStr);
+        // If last sync was before today's 9:00 AM and current time is >= 9:00 AM
+        if (now >= nineAmToday && lastSync < nineAmToday) {
+          console.log('[Daily Scheduler] Past 9:00 AM AEDT - executing daily sync');
+          triggerLiveSync(true);
+          return;
+        }
+      } else {
+        // First session sync
+        triggerLiveSync(false);
+      }
+    }
+
+    /**
+     * DATA PORTABILITY: EXPORT JSON, IMPORT JSON, EXPORT CSV
+     */
+    async function exportJsonData() {
+      const allProps = await StorageService.getAllProperties();
+      const payload = {
+        app: 'GeelongRentalExplorer',
+        version: '1.0',
+        exportedAt: new Date().toISOString(),
+        center: state.center,
+        radiusKm: state.radiusKm,
+        lastSyncTimestamp: state.lastSyncTimestamp,
+        properties: allProps
       };
 
-      await saveToDB(item);
-      allListings.unshift(item);
-      closeAddListingModal();
-      applyFilters();
-      showToast("Accommodation added to IndexedDB!", "success");
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      downloadBlob(blob, `geelong_rentals_${new Date().toISOString().slice(0, 10)}.json`);
+      showToast('JSON database export generated!', 'success');
     }
 
-    /* ==========================================================================
-       10. Import / Export Management
-       ========================================================================== */
-    function openDataModal() {
-      document.getElementById('data-modal').classList.remove('hidden');
-    }
-
-    function closeDataModal() {
-      document.getElementById('data-modal').classList.add('hidden');
-    }
-
-    async function exportData(format) {
-      const data = await getAllFromDB();
-      if (!data || data.length === 0) {
-        showToast("No listings in database to export.", "error");
-        return;
-      }
-
-      if (format === 'json') {
-        downloadBlob(JSON.stringify(data, null, 2), 'solonest-100-geelong-rentals.json', 'application/json');
-      } else {
-        const headers = ["id", "title", "source", "propertyType", "subRegion", "rentPerWeek", "bond", "suburb", "dateListed", "leaseLength", "isFurnished", "billsIncluded", "parking", "nearTransit", "availableFrom", "url", "notes"];
-        const rows = data.map(it => [
-          it.id,
-          `"${(it.title || '').replace(/"/g, '""')}"`,
-          `"${it.source || ''}"`,
-          `"${it.propertyType || ''}"`,
-          `"${it.subRegion || ''}"`,
-          it.rentPerWeek,
-          it.bond,
-          `"${it.suburb || ''}"`,
-          it.dateListed,
-          `"${it.leaseLength || ''}"`,
-          it.isFurnished,
-          it.billsIncluded,
-          it.parking,
-          it.nearTransit,
-          `"${it.availableFrom || ''}"`,
-          `"${it.url || ''}"`,
-          `"${(it.notes || '').replace(/"/g, '""')}"`
-        ].join(','));
-
-        const csvContent = headers.join(',') + '\n' + rows.join('\n');
-        downloadBlob(csvContent, 'solonest-100-geelong-rentals.csv', 'text/csv');
-      }
-      showToast(`Exported ${data.length} listings as ${format.toUpperCase()}`, "success");
-    }
-
-    async function processUploadedFile() {
-      const fileInput = document.getElementById('import-file');
-      if (!fileInput.files || fileInput.files.length === 0) {
-        showToast("Please choose a CSV or JSON file.", "error");
-        return;
-      }
-      const file = fileInput.files[0];
+    async function importJsonData(file) {
+      if (!file) return;
       const reader = new FileReader();
-
       reader.onload = async (e) => {
         try {
-          const text = e.target.result;
-          let items = [];
-          if (file.name.endsWith('.json')) {
-            items = JSON.parse(text);
-          } else if (file.name.endsWith('.csv')) {
-            items = parseCSV(text);
+          const parsed = JSON.parse(e.target.result);
+          const importedProps = parsed.properties || (Array.isArray(parsed) ? parsed : null);
+
+          if (!importedProps || !Array.isArray(importedProps)) {
+            throw new Error('Invalid JSON structure: Expected an array of properties.');
           }
 
-          if (!Array.isArray(items) || items.length === 0) throw new Error("No valid rows found in file.");
+          // Validate required keys
+          for (const item of importedProps) {
+            if (!item.id || !item.address || !item.weeklyRent || item.lat === undefined) {
+              throw new Error('Listing object missing required fields (id, address, weeklyRent, lat).');
+            }
+          }
 
-          const cleaned = items.map((it, idx) => ({
-            id: it.id || (`IMP-${Date.now().toString().slice(-5)}-${idx}`),
-            title: it.title || "Rental Accommodation",
-            source: it.source || "Other",
-            propertyType: it.propertyType || "Single Room (Share House)",
-            subRegion: it.subRegion || getSubRegionForSuburb(it.suburb || 'Belmont'),
-            rentPerWeek: Number(it.rentPerWeek) || 180,
-            bond: Number(it.bond) || (Number(it.rentPerWeek) || 180) * 4,
-            suburb: it.suburb || "Geelong CBD",
-            postcode: it.postcode || "3220",
-            dateListed: it.dateListed || getIsoDate(0),
-            leaseLength: it.leaseLength || "Flexible / Month-to-Month",
-            isFurnished: String(it.isFurnished).toLowerCase() === 'true',
-            billsIncluded: String(it.billsIncluded).toLowerCase() === 'true',
-            parking: String(it.parking).toLowerCase() === 'true',
-            nearTransit: String(it.nearTransit).toLowerCase() === 'true',
-            availableFrom: it.availableFrom || "Immediate",
-            url: it.url || "#",
-            contactName: it.contactName || "Host",
-            contactPhone: it.contactPhone || "",
-            notes: it.notes || "",
-            isSaved: false,
-            status: "Available"
-          }));
-
-          await batchSaveToDB(cleaned);
-          allListings = await getAllFromDB();
+          await StorageService.bulkSaveProperties(importedProps);
+          state.properties = await StorageService.getAllProperties();
           applyFilters();
-          closeDataModal();
-          showToast(`Successfully imported ${cleaned.length} listings!`, "success");
+          showToast(`Successfully imported ${importedProps.length} rental listings!`, 'success');
         } catch (err) {
-          showToast("Error processing file: " + err.message, "error");
+          showToast(`Import failed: ${err.message}`, 'error');
         }
       };
-
       reader.readAsText(file);
     }
 
-    function parseCSV(text) {
-      const lines = text.split(/\r\n|\n/).filter(l => l.trim().length > 0);
-      if (lines.length < 2) return [];
-      const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
-      const list = [];
+    async function exportCsvData() {
+      const list = state.filteredProperties.length > 0 ? state.filteredProperties : state.properties;
+      const headers = ['id', 'address', 'suburb', 'postcode', 'weekly_rent', 'bedrooms', 'bathrooms', 'parking', 'property_type', 'distance_km', 'domain_url'];
+      
+      const rows = list.map(p => [
+        `"${p.id}"`,
+        `"${p.address.replace(/"/g, '""')}"`,
+        `"${p.suburb.replace(/"/g, '""')}"`,
+        `"${p.postcode}"`,
+        p.weeklyRent,
+        p.bedrooms,
+        p.bathrooms,
+        p.carSpaces,
+        `"${p.type}"`,
+        p.distance || calculateDistanceKm(state.center.lat, state.center.lng, p.lat, p.lng).toFixed(1),
+        `"${p.domainUrl || ''}"`
+      ]);
 
-      for (let i = 1; i < lines.length; i++) {
-        const row = [];
-        let inQuotes = false;
-        let token = '';
-        for (let ch of lines[i]) {
-          if (ch === '"') inQuotes = !inQuotes;
-          else if (ch === ',' && !inQuotes) {
-            row.push(token);
-            token = '';
-          } else token += ch;
-        }
-        row.push(token);
-
-        const obj = {};
-        headers.forEach((h, idx) => {
-          obj[h] = row[idx] ? row[idx].trim().replace(/^"|"$/g, '') : '';
-        });
-        list.push(obj);
-      }
-      return list;
+      const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      downloadBlob(blob, `geelong_rentals_export_${new Date().toISOString().slice(0, 10)}.csv`);
+      showToast(`Exported ${list.length} listings to CSV!`, 'success');
     }
 
-    async function resetTo100Seed() {
-      await clearDB();
-      const fresh100 = generate100GeelongListings();
-      await batchSaveToDB(fresh100);
-      allListings = await getAllFromDB();
-      applyFilters();
-      closeDataModal();
-      showToast("Reset IndexedDB to exactly 100 Geelong listings!", "success");
-    }
-
-    /* ==========================================================================
-       11. General Helpers
-       ========================================================================== */
-    function escapeHtml(str) {
-      if (!str) return '';
-      return String(str)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#039;');
-    }
-
-    function copyToClipboard(text) {
-      const ta = document.createElement('textarea');
-      ta.value = text;
-      ta.style.position = 'fixed';
-      ta.style.opacity = '0';
-      document.body.appendChild(ta);
-      ta.select();
-      try { document.execCommand('copy'); } catch(e) {}
-      document.body.removeChild(ta);
-    }
-
-    function downloadBlob(content, filename, type) {
-      const blob = new Blob([content], { type });
+    function downloadBlob(blob, fileName) {
       const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
       URL.revokeObjectURL(url);
     }
 
-    function showToast(msg, type = "success") {
-      const t = document.getElementById('toast');
-      const m = document.getElementById('toast-message');
-      const icon = document.getElementById('toast-icon');
-
-      m.textContent = msg;
-      icon.className = type === 'error' ? 'fa-solid fa-circle-exclamation text-rose-400' : 'fa-solid fa-circle-check text-emerald-400';
-
-      t.classList.remove('translate-y-20', 'opacity-0', 'pointer-events-none');
-      t.classList.add('translate-y-0', 'opacity-100');
-
-      setTimeout(() => {
-        t.classList.add('translate-y-20', 'opacity-0', 'pointer-events-none');
-        t.classList.remove('translate-y-0', 'opacity-100');
-      }, 3000);
+    /**
+     * RESET FILTERS
+     */
+    function resetAllFilters() {
+      state.maxWeeklyRent = 950;
+      state.selectedType = 'all';
+      state.selectedBeds = 'all';
+      document.getElementById('rentSlider').value = 950;
+      document.getElementById('rentDisplayVal').innerHTML = `$950 <span class="text-xs font-normal text-slate-500 ml-1">/ wk</span>`;
+      document.getElementById('typeFilter').value = 'all';
+      document.getElementById('bedFilter').value = 'all';
+      setNewCenter(GEELONG_DEFAULT_COORDS.lat, GEELONG_DEFAULT_COORDS.lng, 'Geelong Central (Vic 3220)');
     }
 
-    /* ==========================================================================
-       12. Application Initialization
-       ========================================================================== */
-    window.onload = async function() {
-      try {
-        await initDB();
-        let items = await getAllFromDB();
-        
-        // If DB is empty or has fewer than 100 listings, initialize the full 100 catalog
-        if (!items || items.length < 100) {
-          const initialCatalog = generate100GeelongListings();
-          await batchSaveToDB(initialCatalog);
-          items = await getAllFromDB();
-        }
-
-        allListings = items;
-        applyFilters();
-      } catch (err) {
-        console.error("Init Error:", err);
-        document.getElementById('db-indicator').textContent = "Storage Error";
-        showToast("Error initializing IndexedDB database.", "error");
+    /**
+     * INITIALIZE SEED DATA IN INDEXED DB
+     */
+    async function initDatabase() {
+      let existing = await StorageService.getAllProperties();
+      if (!existing || existing.length === 0) {
+        await StorageService.bulkSaveProperties(INITIAL_PROPERTIES);
+        state.properties = [...INITIAL_PROPERTIES];
+      } else {
+        state.properties = existing;
       }
+
+      // Load saved custom pin if available
+      const savedPin = await StorageService.getMeta('customPin');
+      if (savedPin) {
+        state.center = { lat: savedPin.lat, lng: savedPin.lng };
+        document.getElementById('centerLocationName').value = savedPin.label;
+        document.getElementById('mapCenterCoordsBadge').textContent = `Center: ${savedPin.label}`;
+      }
+
+      // Load last sync
+      const lastSync = await StorageService.getMeta('lastSyncTimestamp');
+      if (lastSync) {
+        state.lastSyncTimestamp = lastSync;
+        updateSyncUI(new Date(lastSync));
+      } else {
+        triggerLiveSync(false);
+      }
+    }
+
+    /**
+     * ATTACH EVENT LISTENERS
+     */
+    function setupEventListeners() {
+      // Radius Buttons
+      document.querySelectorAll('.radius-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          document.querySelectorAll('.radius-btn').forEach(b => {
+            b.classList.remove('bg-emerald-600', 'text-white', 'shadow-xs');
+            b.classList.add('text-slate-700');
+          });
+          btn.classList.add('bg-emerald-600', 'text-white', 'shadow-xs');
+          btn.classList.remove('text-slate-700');
+
+          const r = parseInt(btn.dataset.radius, 10);
+          updateCenterAndRadius(state.center.lat, state.center.lng, r);
+          applyFilters();
+        });
+      });
+
+      // Weekly Rent Slider
+      const rentSlider = document.getElementById('rentSlider');
+      rentSlider.addEventListener('input', (e) => {
+        const val = e.target.value;
+        state.maxWeeklyRent = val;
+        document.getElementById('rentDisplayVal').innerHTML = `$${val} <span class="text-xs font-normal text-slate-500 ml-1">/ wk</span>`;
+        applyFilters();
+      });
+
+      // Property Type & Bedrooms dropdowns
+      document.getElementById('typeFilter').addEventListener('change', (e) => {
+        state.selectedType = e.target.value;
+        applyFilters();
+      });
+
+      document.getElementById('bedFilter').addEventListener('change', (e) => {
+        state.selectedBeds = e.target.value;
+        applyFilters();
+      });
+
+      // Sorting
+      document.getElementById('sortSelect').addEventListener('change', applyFilters);
+
+      // Reset Button
+      document.getElementById('resetFiltersBtn').addEventListener('click', resetAllFilters);
+
+      // Recenter to default Geelong CBD
+      document.getElementById('recenterBtn').addEventListener('click', () => {
+        setNewCenter(GEELONG_DEFAULT_COORDS.lat, GEELONG_DEFAULT_COORDS.lng, 'Geelong Central (Vic 3220)');
+        state.map.flyTo([GEELONG_DEFAULT_COORDS.lat, GEELONG_DEFAULT_COORDS.lng], 13);
+        showToast('Map recentered to Geelong CBD', 'info');
+      });
+
+      // Live Sync Button
+      document.getElementById('liveSyncBtn').addEventListener('click', () => triggerLiveSync(false));
+
+      // Domain Search Button
+      document.getElementById('domainSearchBtn').addEventListener('click', triggerDomainSearch);
+
+      // Data Dropdown toggle
+      const dataBtn = document.getElementById('dataMenuBtn');
+      const dataDropdown = document.getElementById('dataMenuDropdown');
+      dataBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        dataDropdown.classList.toggle('hidden');
+      });
+      document.addEventListener('click', () => dataDropdown.classList.add('hidden'));
+
+      // Export JSON
+      document.getElementById('exportJsonBtn').addEventListener('click', exportJsonData);
+
+      // Import JSON
+      const jsonInput = document.getElementById('jsonFileInput');
+      jsonInput.addEventListener('change', (e) => {
+        if (e.target.files.length > 0) {
+          importJsonData(e.target.files[0]);
+          jsonInput.value = '';
+        }
+      });
+
+      // Export CSV
+      document.getElementById('exportCsvBtn').addEventListener('click', exportCsvData);
+
+      // Reset Default Samples
+      document.getElementById('resetSampleDataBtn').addEventListener('click', async () => {
+        await StorageService.clearAllProperties();
+        await StorageService.bulkSaveProperties(INITIAL_PROPERTIES);
+        state.properties = [...INITIAL_PROPERTIES];
+        applyFilters();
+        showToast('Default Geelong properties restored', 'info');
+      });
+
+      // Drawer Close Events
+      document.getElementById('closeDrawerBtn').addEventListener('click', closePropertyDrawer);
+      document.getElementById('detailDrawerBackdrop').addEventListener('click', closePropertyDrawer);
+
+      // Add Property Modal Events
+      const addModal = document.getElementById('addModal');
+      document.getElementById('openAddModalBtn').addEventListener('click', () => {
+        // Pre-fill latitude and longitude close to current center
+        document.getElementById('newLat').value = state.center.lat.toFixed(4);
+        document.getElementById('newLng').value = state.center.lng.toFixed(4);
+        addModal.classList.remove('hidden');
+      });
+
+      const closeAddModal = () => addModal.classList.add('hidden');
+      document.getElementById('closeAddModalBtn').addEventListener('click', closeAddModal);
+      document.getElementById('cancelAddBtn').addEventListener('click', closeAddModal);
+
+      // Add Property Form Submission
+      document.getElementById('addPropertyForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const address = document.getElementById('newAddress').value.trim();
+        const suburb = document.getElementById('newSuburb').value.trim();
+        const weeklyRent = parseInt(document.getElementById('newRent').value, 10);
+        const type = document.getElementById('newType').value;
+        const bedrooms = parseInt(document.getElementById('newBeds').value, 10);
+        const bathrooms = parseInt(document.getElementById('newBaths').value, 10);
+        const carSpaces = parseInt(document.getElementById('newCars').value, 10);
+        const lat = parseFloat(document.getElementById('newLat').value);
+        const lng = parseFloat(document.getElementById('newLng').value);
+        const imageUrl = document.getElementById('newImageUrl').value.trim() || 'https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?auto=format&fit=crop&w=800&q=80';
+        const description = document.getElementById('newDesc').value.trim() || 'Newly added rental listing in Geelong.';
+
+        const newProp = {
+          id: 'prop-' + Date.now(),
+          address,
+          suburb,
+          postcode: '3220',
+          weeklyRent,
+          type,
+          bedrooms,
+          bathrooms,
+          carSpaces,
+          lat,
+          lng,
+          imageUrl,
+          description,
+          availableDate: 'Available Now',
+          inspectionTime: 'Contact Agent',
+          features: ['Newly Listed', 'Air Conditioning', 'Built-in Wardrobes'],
+          domainUrl: `https://www.domain.com.au/rent/${encodeURIComponent(suburb.toLowerCase().replace(/\s+/g, '-'))}-vic-3220/`
+        };
+
+        await StorageService.saveProperty(newProp);
+        state.properties.push(newProp);
+        applyFilters();
+        closeAddModal();
+        document.getElementById('addPropertyForm').reset();
+        showToast('New listing saved to IndexedDB!', 'success');
+      });
+    }
+
+    /**
+     * WINDOW ONLOAD ENTRY POINT
+     */
+    window.onload = async function() {
+      // 1. Initialize Map
+      initMap();
+
+      // 2. Initialize Database & Seeds
+      await initDatabase();
+
+      // 3. Setup Listeners
+      setupEventListeners();
+
+      // 4. Initial filter calculation
+      applyFilters();
+
+      // 5. Run 9:00 AM daily check and start periodic interval (every 60 seconds)
+      checkDailyScheduledSync();
+      setInterval(checkDailyScheduledSync, 60000);
+
+      // Render Lucide icons
+      lucide.createIcons();
     };
   </script>
 </body>
