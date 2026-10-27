@@ -1,0 +1,1836 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SoloNest v2 | Greater Geelong Budget Rental Aggregator</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome 6 CDN for UI Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#f0fdfa',
+              100: '#ccfbf1',
+              500: '#0d9488',
+              600: '#0f766e',
+              700: '#115e59',
+              800: '#134e4a',
+              900: '#042f2e',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    *:focus-visible {
+      outline: 2px solid #0f766e;
+      outline-offset: 2px;
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: #f1f5f9;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background-color: #cbd5e1;
+      border-radius: 9999px;
+    }
+    .line-clamp-2 {
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased min-h-screen flex flex-col font-sans selection:bg-brand-100 selection:text-brand-800">
+
+  <!-- Toast Notification Popover -->
+  <div id="toast" class="fixed bottom-5 right-5 z-50 transform transition-all duration-300 translate-y-20 opacity-0 pointer-events-none bg-slate-900 text-white px-5 py-3 rounded-xl shadow-2xl flex items-center gap-3 border border-slate-700 text-xs sm:text-sm font-medium">
+    <i id="toast-icon" class="fa-solid fa-circle-check text-emerald-400"></i>
+    <span id="toast-message">Ready</span>
+  </div>
+
+  <!-- Header -->
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-xs">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-brand-600 text-white flex items-center justify-center shadow-md shadow-brand-600/20">
+          <i class="fa-solid fa-building-user text-lg"></i>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="text-xl font-black text-slate-900 tracking-tight">SoloNest <span class="text-xs px-1.5 py-0.5 rounded bg-brand-50 text-brand-700 font-bold border border-brand-200">v2.0</span></h1>
+            <span class="hidden md:inline-flex bg-slate-100 text-slate-600 text-[11px] font-semibold px-2 py-0.5 rounded-full border border-slate-200">
+              Greater Geelong Rental Aggregator
+            </span>
+          </div>
+          <p class="text-xs text-slate-500">Affordable Single-Person Rooms, Studios, Flats & 1-Bed Units</p>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="flex items-center gap-2">
+        <button onclick="triggerLiveRefresh()" id="refresh-sync-btn" class="px-3.5 py-2 text-xs font-bold rounded-xl text-brand-700 bg-brand-50 hover:bg-brand-100 border border-brand-200 transition-all flex items-center gap-1.5 shadow-xs">
+          <i class="fa-solid fa-rotate text-brand-600" id="refresh-sync-icon"></i>
+          <span>Live Sync</span>
+          <span id="sync-counter-badge" class="bg-brand-600 text-white text-[10px] px-1.5 py-0.2 rounded-full font-bold ml-0.5">100</span>
+        </button>
+
+        <button onclick="openBulkIngestModal()" class="px-3 py-2 text-xs font-semibold rounded-xl text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-200 transition-colors flex items-center gap-1.5" title="Bulk import scrapings or raw listings">
+          <i class="fa-solid fa-file-import text-brand-600"></i>
+          <span class="hidden sm:inline">Bulk Ingest</span>
+        </button>
+
+        <button onclick="openAddListingModal()" class="px-3.5 py-2 text-xs font-bold rounded-xl text-white bg-slate-900 hover:bg-brand-600 transition-colors flex items-center gap-1.5 shadow-xs">
+          <i class="fa-solid fa-plus"></i>
+          <span class="hidden sm:inline">Add Listing</span>
+        </button>
+
+        <button onclick="openDataModal()" class="p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-xl text-sm border border-slate-200 transition-colors" title="Export / Import Database">
+          <i class="fa-solid fa-database"></i>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 w-full flex-grow space-y-4">
+
+    <!-- Deep Search Aggregator Launcher Banner -->
+    <div class="bg-slate-900 text-white rounded-2xl p-4 sm:p-5 shadow-sm border border-slate-800">
+      <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3 mb-3 pb-3 border-b border-slate-800">
+        <div>
+          <span class="text-[11px] font-bold uppercase tracking-wider text-teal-400 flex items-center gap-1.5 mb-0.5">
+            <i class="fa-solid fa-bolt-lightning text-teal-400"></i> Public Platform Live Search Launcher
+          </span>
+          <p class="text-xs text-slate-300">
+            Generate and execute real-time searches across major rental portals using your active filter criteria (Suburb: <strong class="text-white" id="launcher-suburb-display">All Geelong</strong>, Max: <strong class="text-white" id="launcher-price-display">$350/wk</strong>).
+          </p>
+        </div>
+        <div class="flex items-center gap-2 self-start lg:self-auto">
+          <button onclick="launchAllPlatforms()" class="px-3.5 py-2 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 text-xs font-black transition-all flex items-center gap-1.5 shadow-md shadow-teal-500/20 whitespace-nowrap">
+            <i class="fa-solid fa-arrow-up-right-from-square"></i>
+            <span>Launch All 5 Platforms</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Platform Launcher Grid Buttons -->
+      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5">
+        <button onclick="launchPlatformSearch('flatmates')" class="p-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-800 border border-red-500/30 hover:border-red-500 text-left transition-all group">
+          <div class="flex items-center justify-between mb-1">
+            <span class="text-xs font-bold text-red-400 group-hover:text-red-300 flex items-center gap-1.5">
+              <span class="w-2 h-2 rounded-full bg-red-500"></span> Flatmates
+            </span>
+            <i class="fa-solid fa-arrow-up-right-from-square text-[10px] text-slate-500 group-hover:text-white"></i>
+          </div>
+          <p class="text-[11px] text-slate-400 line-clamp-1">Rooms & Granny flats</p>
+        </button>
+
+        <button onclick="launchPlatformSearch('domain')" class="p-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-800 border border-emerald-500/30 hover:border-emerald-500 text-left transition-all group">
+          <div class="flex items-center justify-between mb-1">
+            <span class="text-xs font-bold text-emerald-400 group-hover:text-emerald-300 flex items-center gap-1.5">
+              <span class="w-2 h-2 rounded-full bg-emerald-500"></span> Domain
+            </span>
+            <i class="fa-solid fa-arrow-up-right-from-square text-[10px] text-slate-500 group-hover:text-white"></i>
+          </div>
+          <p class="text-[11px] text-slate-400 line-clamp-1">1-Bed units & studios</p>
+        </button>
+
+        <button onclick="launchPlatformSearch('realestate')" class="p-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-800 border border-rose-500/30 hover:border-rose-500 text-left transition-all group">
+          <div class="flex items-center justify-between mb-1">
+            <span class="text-xs font-bold text-rose-400 group-hover:text-rose-300 flex items-center gap-1.5">
+              <span class="w-2 h-2 rounded-full bg-rose-500"></span> Realestate.com.au
+            </span>
+            <i class="fa-solid fa-arrow-up-right-from-square text-[10px] text-slate-500 group-hover:text-white"></i>
+          </div>
+          <p class="text-[11px] text-slate-400 line-clamp-1">Units, flats & apartments</p>
+        </button>
+
+        <button onclick="launchPlatformSearch('gumtree')" class="p-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-800 border border-lime-500/30 hover:border-lime-500 text-left transition-all group">
+          <div class="flex items-center justify-between mb-1">
+            <span class="text-xs font-bold text-lime-400 group-hover:text-lime-300 flex items-center gap-1.5">
+              <span class="w-2 h-2 rounded-full bg-lime-500"></span> Gumtree
+            </span>
+            <i class="fa-solid fa-arrow-up-right-from-square text-[10px] text-slate-500 group-hover:text-white"></i>
+          </div>
+          <p class="text-[11px] text-slate-400 line-clamp-1">Sharehouses & direct rooms</p>
+        </button>
+
+        <button onclick="launchPlatformSearch('airbnb')" class="p-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-800 border border-pink-500/30 hover:border-pink-500 text-left transition-all group">
+          <div class="flex items-center justify-between mb-1">
+            <span class="text-xs font-bold text-pink-400 group-hover:text-pink-300 flex items-center gap-1.5">
+              <span class="w-2 h-2 rounded-full bg-pink-500"></span> Airbnb (28d+)
+            </span>
+            <i class="fa-solid fa-arrow-up-right-from-square text-[10px] text-slate-500 group-hover:text-white"></i>
+          </div>
+          <p class="text-[11px] text-slate-400 line-clamp-1">Extended medium-term stays</p>
+        </button>
+      </div>
+    </div>
+
+    <!-- Sub-Region Quick Switcher Tabs -->
+    <div class="bg-white rounded-2xl p-2 border border-slate-200 shadow-xs flex items-center gap-1.5 overflow-x-auto custom-scrollbar">
+      <button onclick="setSubRegion('ALL')" data-region="ALL" class="region-tab active-region px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all bg-brand-600 text-white shadow-xs">
+        All Greater Geelong <span id="badge-count-all" class="ml-1 px-1.5 py-0.5 rounded-full text-[10px] bg-brand-700 text-white">100</span>
+      </button>
+      <button onclick="setSubRegion('SOUTH')" data-region="SOUTH" class="region-tab px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all text-slate-600 hover:bg-slate-100">
+        South & Uni <span class="text-[10px] text-slate-400 ml-1">(Belmont / Grovedale / Waurn Ponds)</span>
+      </button>
+      <button onclick="setSubRegion('NORTH')" data-region="NORTH" class="region-tab px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all text-slate-600 hover:bg-slate-100">
+        North Geelong <span class="text-[10px] text-slate-400 ml-1">(Corio / Norlane / Bell Park)</span>
+      </button>
+      <button onclick="setSubRegion('INNER')" data-region="INNER" class="region-tab px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all text-slate-600 hover:bg-slate-100">
+        Inner & Central <span class="text-[10px] text-slate-400 ml-1">(CBD / West / Newtown)</span>
+      </button>
+      <button onclick="setSubRegion('EAST')" data-region="EAST" class="region-tab px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all text-slate-600 hover:bg-slate-100">
+        East & Bellarine <span class="text-[10px] text-slate-400 ml-1">(Newcomb / Whittington)</span>
+      </button>
+      <button onclick="setSubRegion('GROWTH')" data-region="GROWTH" class="region-tab px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all text-slate-600 hover:bg-slate-100">
+        Growth Corridor <span class="text-[10px] text-slate-400 ml-1">(Charlemont / Armstrong Creek)</span>
+      </button>
+    </div>
+
+    <!-- Filter & Search Toolbar -->
+    <section class="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-xs space-y-4">
+      
+      <!-- Primary Input & Dropdown Row -->
+      <div class="grid grid-cols-1 md:grid-cols-12 gap-3">
+        <!-- Search Keyword -->
+        <div class="md:col-span-4 relative">
+          <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+            <i class="fa-solid fa-magnifying-glass"></i>
+          </div>
+          <input 
+            type="text" 
+            id="filter-keyword" 
+            placeholder="Search suburb, street, 'bills', 'ensuite', 'quiet'..." 
+            class="w-full pl-10 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-900 focus:bg-white focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
+            oninput="applyFilters()"
+          >
+        </div>
+
+        <!-- Suburb Dropdown -->
+        <div class="md:col-span-3">
+          <select 
+            id="filter-suburb" 
+            class="w-full py-2.5 px-3 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-900 focus:bg-white focus:border-brand-500 focus:ring-1 focus:ring-brand-500 font-medium"
+            onchange="syncSubRegionFromSuburb(); applyFilters();"
+          >
+            <option value="ALL">All Suburbs in Greater Geelong</option>
+            <optgroup label="South & Uni Belt">
+              <option value="Belmont">Belmont (3216)</option>
+              <option value="Grovedale">Grovedale (3216)</option>
+              <option value="Waurn Ponds">Waurn Ponds (3216)</option>
+              <option value="Highton">Highton (3216)</option>
+              <option value="Marshall">Marshall (3216)</option>
+            </optgroup>
+            <optgroup label="Growth Corridor">
+              <option value="Charlemont">Charlemont (3217)</option>
+              <option value="Armstrong Creek">Armstrong Creek (3217)</option>
+              <option value="Mount Duneed">Mount Duneed (3217)</option>
+            </optgroup>
+            <optgroup label="North Geelong">
+              <option value="Corio">Corio (3214)</option>
+              <option value="Norlane">Norlane (3214)</option>
+              <option value="North Shore">North Shore (3214)</option>
+              <option value="Bell Park">Bell Park (3215)</option>
+              <option value="Bell Post Hill">Bell Post Hill (3215)</option>
+              <option value="Hamlyn Heights">Hamlyn Heights (3215)</option>
+              <option value="North Geelong">North Geelong (3215)</option>
+              <option value="Lara">Lara (3212)</option>
+            </optgroup>
+            <optgroup label="Inner & Central">
+              <option value="Geelong CBD">Geelong CBD (3220)</option>
+              <option value="Geelong West">Geelong West (3218)</option>
+              <option value="Newtown">Newtown (3220)</option>
+              <option value="South Geelong">South Geelong (3220)</option>
+              <option value="East Geelong">East Geelong (3219)</option>
+            </optgroup>
+            <optgroup label="East & Bellarine Fringe">
+              <option value="Newcomb">Newcomb (3219)</option>
+              <option value="Whittington">Whittington (3219)</option>
+              <option value="Thomson">Thomson (3219)</option>
+              <option value="Breakwater">Breakwater (3219)</option>
+              <option value="St Albans Park">St Albans Park (3219)</option>
+              <option value="Leopold">Leopold (3224)</option>
+              <option value="Moolap">Moolap (3224)</option>
+            </optgroup>
+          </select>
+        </div>
+
+        <!-- Recency Listed -->
+        <div class="md:col-span-3">
+          <select 
+            id="filter-recency" 
+            class="w-full py-2.5 px-3 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-900 focus:bg-white focus:border-brand-500 focus:ring-1 focus:ring-brand-500 font-medium"
+            onchange="applyFilters()"
+          >
+            <option value="ALL">Anytime Listed</option>
+            <option value="TODAY">Listed Today</option>
+            <option value="3">Listed in Last 3 Days</option>
+            <option value="7">Listed in Last 7 Days</option>
+            <option value="14">Listed in Last 14 Days</option>
+            <option value="28">Listed in Last 28 Days</option>
+          </select>
+        </div>
+
+        <!-- Platform Source -->
+        <div class="md:col-span-2">
+          <select 
+            id="filter-source" 
+            class="w-full py-2.5 px-3 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-900 focus:bg-white focus:border-brand-500 focus:ring-1 focus:ring-brand-500 font-medium"
+            onchange="applyFilters()"
+          >
+            <option value="ALL">All Platforms</option>
+            <option value="Flatmates">Flatmates</option>
+            <option value="Domain">Domain</option>
+            <option value="Realestate">Realestate.com.au</option>
+            <option value="Gumtree">Gumtree</option>
+            <option value="Airbnb">Airbnb</option>
+            <option value="Direct">Direct / Other</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Secondary Controls: Type Pills, Max Rent Slider & Lease Length -->
+      <div class="pt-3 border-t border-slate-100 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        <!-- Accommodation Type Selector -->
+        <div class="flex items-center gap-1.5 flex-wrap text-xs">
+          <span class="text-slate-400 font-bold uppercase tracking-wider text-[10px] mr-1">Type:</span>
+          <button type="button" onclick="setTypeFilter('ALL')" data-type="ALL" class="type-pill active-pill px-3 py-1.5 rounded-lg border font-bold bg-brand-50 border-brand-200 text-brand-700 shadow-xs">All Types</button>
+          <button type="button" onclick="setTypeFilter('Single Room (Share House)')" data-type="Single Room (Share House)" class="type-pill px-3 py-1.5 rounded-lg border border-slate-200 font-medium text-slate-600 hover:bg-slate-50">Private Room</button>
+          <button type="button" onclick="setTypeFilter('Studio / Granny Flat')" data-type="Studio / Granny Flat" class="type-pill px-3 py-1.5 rounded-lg border border-slate-200 font-medium text-slate-600 hover:bg-slate-50">Studio / Granny Flat</button>
+          <button type="button" onclick="setTypeFilter('1-Bed Unit / Apartment')" data-type="1-Bed Unit / Apartment" class="type-pill px-3 py-1.5 rounded-lg border border-slate-200 font-medium text-slate-600 hover:bg-slate-50">1-Bed Unit</button>
+        </div>
+
+        <!-- Rent Slider -->
+        <div class="flex items-center gap-3 min-w-[280px]">
+          <span class="text-xs font-semibold text-slate-500 whitespace-nowrap">Max Rent:</span>
+          <input 
+            type="range" 
+            id="price-range" 
+            min="100" 
+            max="450" 
+            step="10" 
+            value="380" 
+            class="w-full accent-brand-600 h-1.5 bg-slate-200 rounded-lg cursor-pointer"
+            oninput="updatePriceSlider(this.value)"
+          >
+          <span id="price-display" class="text-xs font-black text-brand-800 bg-brand-50 border border-brand-200 px-2.5 py-1 rounded-lg min-w-[75px] text-center">
+            $380/wk
+          </span>
+        </div>
+      </div>
+
+      <!-- Inclusions & Sorting Options -->
+      <div class="pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3 text-xs">
+        <div class="flex flex-wrap items-center gap-2">
+          <!-- Lease Duration -->
+          <div class="flex items-center gap-1 mr-1">
+            <span class="text-slate-400 font-bold text-[10px] uppercase tracking-wider">Lease:</span>
+            <select id="filter-lease" onchange="applyFilters()" class="text-xs bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-slate-700 font-semibold">
+              <option value="ALL">Any Lease Term</option>
+              <option value="FLEX">Flexible / Month-to-Month</option>
+              <option value="MEDIUM">3 - 6 Months</option>
+              <option value="LONG">12+ Months</option>
+            </select>
+          </div>
+
+          <!-- Feature Checkboxes -->
+          <label class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 cursor-pointer select-none">
+            <input type="checkbox" id="chk-bills" onchange="applyFilters()" class="rounded text-brand-600 focus:ring-brand-500">
+            <span class="text-emerald-700 font-bold">Bills Included</span>
+          </label>
+
+          <label class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 cursor-pointer select-none">
+            <input type="checkbox" id="chk-furnished" onchange="applyFilters()" class="rounded text-brand-600 focus:ring-brand-500">
+            <span class="text-slate-700 font-medium">Furnished</span>
+          </label>
+
+          <label class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 cursor-pointer select-none">
+            <input type="checkbox" id="chk-parking" onchange="applyFilters()" class="rounded text-brand-600 focus:ring-brand-500">
+            <span class="text-slate-700 font-medium">Off-street Parking</span>
+          </label>
+
+          <label class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 cursor-pointer select-none">
+            <input type="checkbox" id="chk-transit" onchange="applyFilters()" class="rounded text-brand-600 focus:ring-brand-500">
+            <span class="text-slate-700 font-medium">Near Train/Bus</span>
+          </label>
+
+          <label class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-50/70 hover:bg-amber-100 border border-amber-200/80 cursor-pointer select-none">
+            <input type="checkbox" id="chk-saved-only" onchange="applyFilters()" class="rounded text-amber-600 focus:ring-amber-500">
+            <span class="text-amber-800 font-bold"><i class="fa-solid fa-star text-amber-500 text-[10px]"></i> Shortlist Only</span>
+          </label>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <span class="text-slate-400 font-medium">Sort:</span>
+          <select id="sort-select" onchange="applyFilters()" class="text-xs bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-slate-700 font-semibold">
+            <option value="date-newest">Listed: Newest First</option>
+            <option value="price-asc">Price: Inexpensive First</option>
+            <option value="price-desc">Price: Highest First</option>
+            <option value="suburb-asc">Suburb: Alphabetical</option>
+          </select>
+          <button onclick="resetFilters()" class="text-xs text-slate-400 hover:text-slate-800 underline px-1">Reset</button>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- Results Status Bar -->
+    <div class="flex flex-wrap items-center justify-between gap-3 text-xs px-1">
+      <div class="flex items-center gap-2">
+        <span class="font-bold text-slate-800 text-sm" id="result-count">Showing 0 rentals</span>
+        <span class="text-slate-400" id="filter-summary-badge"></span>
+      </div>
+      <div class="flex items-center gap-3 text-slate-500">
+        <span class="flex items-center gap-1.5">
+          <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+          <span id="db-indicator">IndexedDB Connected</span>
+        </span>
+        <span class="text-slate-300">•</span>
+        <span id="last-sync-time" class="italic">Ready</span>
+      </div>
+    </div>
+
+    <!-- Cards Grid Container -->
+    <div id="cards-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+      <!-- Rental accommodation cards dynamically generated here -->
+    </div>
+
+    <!-- Empty State -->
+    <div id="empty-state" class="hidden text-center py-16 px-4 bg-white rounded-2xl border border-dashed border-slate-300">
+      <div class="w-14 h-14 mx-auto rounded-full bg-slate-100 text-slate-400 flex items-center justify-center text-xl mb-3">
+        <i class="fa-solid fa-bed"></i>
+      </div>
+      <h3 class="text-base font-bold text-slate-800 mb-1">No single-person accommodations match these filters</h3>
+      <p class="text-xs text-slate-500 max-w-sm mx-auto mb-4">Try widening your price slider, clearing inclusions, or switching to "All Greater Geelong".</p>
+      <button onclick="resetFilters()" class="px-4 py-2 bg-brand-600 text-white rounded-xl text-xs font-bold hover:bg-brand-700 shadow-xs">
+        Reset All Filters
+      </button>
+    </div>
+
+  </main>
+
+  <!-- Detailed Listing Modal -->
+  <div id="detail-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 hidden">
+    <div class="bg-white rounded-2xl max-w-2xl w-full max-h-[92vh] flex flex-col shadow-2xl overflow-hidden animate-in fade-in duration-150">
+      
+      <!-- Modal Top Bar -->
+      <div class="p-5 border-b border-slate-100 flex items-start justify-between bg-slate-50/80">
+        <div>
+          <div class="flex items-center gap-2 mb-1.5">
+            <span id="modal-source-badge" class="px-2.5 py-0.5 rounded text-[11px] font-bold uppercase tracking-wider text-white">Source</span>
+            <span id="modal-type-badge" class="px-2 py-0.5 rounded text-[11px] font-semibold bg-slate-200 text-slate-800">Type</span>
+            <span id="modal-region-badge" class="px-2 py-0.5 rounded text-[11px] font-semibold bg-brand-50 text-brand-800 border border-brand-200">Region</span>
+          </div>
+          <h2 id="modal-title" class="text-lg font-bold text-slate-900 leading-snug">Listing Title</h2>
+          <p id="modal-location" class="text-xs text-slate-500 flex items-center gap-1.5 mt-0.5">
+            <i class="fa-solid fa-location-dot text-brand-600"></i> Suburb, Greater Geelong
+          </p>
+        </div>
+        <button onclick="closeDetailModal()" class="text-slate-400 hover:text-slate-700 p-1.5 rounded-lg hover:bg-slate-200">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <!-- Modal Content Body -->
+      <div class="p-6 overflow-y-auto custom-scrollbar space-y-5 text-xs sm:text-sm">
+        
+        <!-- Financials Grid -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-50 p-4 rounded-xl border border-slate-200">
+          <div>
+            <span class="text-[11px] text-slate-400 font-medium block">Weekly Rent</span>
+            <span id="modal-price-week" class="text-xl font-black text-slate-900">$0/wk</span>
+          </div>
+          <div>
+            <span class="text-[11px] text-slate-400 font-medium block">Estimated Monthly</span>
+            <span id="modal-price-month" class="text-sm font-bold text-slate-700">$0/mo</span>
+          </div>
+          <div>
+            <span class="text-[11px] text-slate-400 font-medium block">Bond / Deposit</span>
+            <span id="modal-bond" class="text-xs font-semibold text-slate-700">$0</span>
+          </div>
+          <div>
+            <span class="text-[11px] text-slate-400 font-medium block">Available</span>
+            <span id="modal-avail" class="text-xs font-bold text-emerald-700">Immediate</span>
+          </div>
+        </div>
+
+        <!-- Badges Cluster -->
+        <div>
+          <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Terms, Utilities & Inclusions</h3>
+          <div id="modal-badges" class="flex flex-wrap gap-2 text-xs">
+            <!-- Dynamic Badges -->
+          </div>
+        </div>
+
+        <!-- Notes / Full Description -->
+        <div>
+          <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Property Description & Inspection Notes</h3>
+          <div id="modal-notes" class="text-slate-600 text-xs sm:text-sm bg-slate-50 p-4 rounded-xl border border-slate-200 whitespace-pre-line leading-relaxed">
+            Notes will appear here.
+          </div>
+        </div>
+
+        <!-- Contact & Platform Link Box -->
+        <div class="bg-brand-50/70 p-4 rounded-xl border border-brand-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div>
+            <span class="text-[11px] font-bold uppercase tracking-wider text-brand-800 block">Contact Information</span>
+            <div id="modal-contact" class="font-bold text-slate-800 text-sm">Contact Name</div>
+            <div id="modal-phone" class="text-xs text-slate-600">0400 000 000</div>
+          </div>
+          <div class="flex items-center gap-2">
+            <a id="modal-external-link" href="#" target="_blank" rel="noopener noreferrer" class="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-xs">
+              <span>Open on Platform</span>
+              <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
+            </a>
+            <button onclick="copyListingSummary()" class="px-3 py-2 bg-white border border-slate-200 text-slate-700 rounded-xl text-xs font-semibold hover:bg-slate-50 flex items-center gap-1.5">
+              <i class="fa-solid fa-clipboard text-slate-500"></i>
+              <span>Copy</span>
+            </button>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="p-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between text-xs">
+        <span class="text-slate-400" id="modal-id-display">ID: #000</span>
+        <div class="flex items-center gap-2">
+          <button id="modal-delete-btn" onclick="deleteActiveListing()" class="px-3 py-1.5 text-rose-600 hover:bg-rose-50 rounded-lg font-medium">Delete</button>
+          <button onclick="closeDetailModal()" class="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl font-bold">Close</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Bulk Ingest / Browser Scraper Import Modal -->
+  <div id="bulk-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 hidden">
+    <div class="bg-white rounded-2xl max-w-xl w-full p-5 sm:p-6 shadow-2xl overflow-hidden animate-in fade-in duration-150 space-y-4">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+        <div>
+          <h3 class="font-bold text-slate-900 text-base flex items-center gap-2">
+            <i class="fa-solid fa-wand-magic-sparkles text-brand-600"></i> Bulk Ingest & Scraper Drop
+          </h3>
+          <p class="text-xs text-slate-500">Paste multi-line listings, TSV/table copies, or scraper outputs</p>
+        </div>
+        <button onclick="closeBulkIngestModal()" class="text-slate-400 hover:text-slate-700">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <div class="space-y-3 text-xs">
+        <p class="text-slate-600 leading-relaxed">
+          Paste text copied from Flatmates, Domain, Realestate, or tabular data from browser scrapers (Web Scraper / Instant Data Scraper). The parser detects prices, suburbs, and platform sources automatically.
+        </p>
+
+        <textarea 
+          id="bulk-input-text" 
+          rows="7" 
+          placeholder="e.g.
+Private room in Belmont $190/wk furnished bills incl
+Corio studio granny flat $220/wk Domain
+1-Bed unit in Geelong CBD $340 pw realestate.com.au
+Grovedale room for rent $165 pw near Waurn Ponds" 
+          class="w-full p-3 font-mono text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:border-brand-500"
+        ></textarea>
+
+        <div class="bg-slate-100 p-3 rounded-xl flex items-center justify-between">
+          <span class="text-slate-600">Duplicate detection: Active (matches existing URLs or Titles)</span>
+          <button onclick="insertSampleBulkText()" class="text-brand-600 font-bold hover:underline">Insert Sample Text</button>
+        </div>
+
+        <div class="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
+          <button onclick="closeBulkIngestModal()" class="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl font-semibold">Cancel</button>
+          <button onclick="processBulkIngest()" class="px-5 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl font-bold shadow-xs">
+            Parse & Ingest into IndexedDB
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Manual Add Listing Modal -->
+  <div id="add-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 hidden">
+    <div class="bg-white rounded-2xl max-w-lg w-full max-h-[92vh] flex flex-col shadow-2xl overflow-hidden animate-in fade-in duration-150">
+      
+      <div class="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+        <div>
+          <h2 class="font-bold text-slate-900 text-base">Add Single-Person Accommodation</h2>
+          <p class="text-xs text-slate-500">Commits directly to local IndexedDB store</p>
+        </div>
+        <button onclick="closeAddListingModal()" class="text-slate-400 hover:text-slate-700 p-1">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <form id="listing-form" onsubmit="handleFormSubmit(event)" class="p-5 overflow-y-auto custom-scrollbar space-y-3 text-xs">
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Title *</label>
+          <input type="text" id="f-title" required placeholder="e.g. Furnished Room with Ensuite near Deakin Uni" class="w-full p-2.5 border border-slate-200 rounded-xl">
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Platform Source *</label>
+            <select id="f-source" class="w-full p-2.5 border border-slate-200 rounded-xl bg-white font-medium">
+              <option value="Flatmates">Flatmates</option>
+              <option value="Domain">Domain</option>
+              <option value="Realestate">Realestate.com.au</option>
+              <option value="Gumtree">Gumtree</option>
+              <option value="Airbnb">Airbnb</option>
+              <option value="Direct">Direct / Other</option>
+            </select>
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Accommodation Type *</label>
+            <select id="f-type" class="w-full p-2.5 border border-slate-200 rounded-xl bg-white font-medium">
+              <option value="Single Room (Share House)">Single Room (Share House)</option>
+              <option value="Studio / Granny Flat">Studio / Granny Flat</option>
+              <option value="1-Bed Unit / Apartment">1-Bed Unit / Apartment</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-3 gap-3">
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Rent $/wk *</label>
+            <input type="number" id="f-price" required min="80" max="999" placeholder="200" class="w-full p-2.5 border border-slate-200 rounded-xl font-bold">
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Suburb *</label>
+            <input type="text" id="f-suburb" required placeholder="Belmont" class="w-full p-2.5 border border-slate-200 rounded-xl">
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Date Listed *</label>
+            <input type="date" id="f-date" required class="w-full p-2.5 border border-slate-200 rounded-xl">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Lease Length</label>
+            <select id="f-lease" class="w-full p-2.5 border border-slate-200 rounded-xl bg-white font-medium">
+              <option value="Flexible / Month-to-Month">Flexible / Month-to-Month</option>
+              <option value="Medium Term (3 - 6 months)">Medium Term (3 - 6 months)</option>
+              <option value="Long Term (12+ months)">Long Term (12+ months)</option>
+            </select>
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Available From</label>
+            <input type="text" id="f-avail" placeholder="Immediate or Date" class="w-full p-2.5 border border-slate-200 rounded-xl">
+          </div>
+        </div>
+
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Inclusions & Amenities</label>
+          <div class="grid grid-cols-2 gap-2 text-slate-700">
+            <label class="flex items-center gap-2"><input type="checkbox" id="f-bills" class="rounded text-brand-600"> Bills Included in Rent</label>
+            <label class="flex items-center gap-2"><input type="checkbox" id="f-furnished" class="rounded text-brand-600"> Fully / Semi Furnished</label>
+            <label class="flex items-center gap-2"><input type="checkbox" id="f-parking" class="rounded text-brand-600"> Off-street Parking</label>
+            <label class="flex items-center gap-2"><input type="checkbox" id="f-transit" class="rounded text-brand-600"> Near Public Transport</label>
+          </div>
+        </div>
+
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Original Listing URL</label>
+          <input type="url" id="f-url" placeholder="https://www.flatmates.com.au/..." class="w-full p-2.5 border border-slate-200 rounded-xl">
+        </div>
+
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Description & Inspection Notes</label>
+          <textarea id="f-notes" rows="2" placeholder="Clean brick unit, quiet cul-de-sac, split system AC..." class="w-full p-2.5 border border-slate-200 rounded-xl"></textarea>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Contact Name</label>
+            <input type="text" id="f-cname" placeholder="Host / Property Manager" class="w-full p-2.5 border border-slate-200 rounded-xl">
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Contact Phone</label>
+            <input type="text" id="f-ccontact" placeholder="0400 000 000" class="w-full p-2.5 border border-slate-200 rounded-xl">
+          </div>
+        </div>
+
+        <div class="pt-3 border-t border-slate-100 flex justify-end gap-2">
+          <button type="button" onclick="closeAddListingModal()" class="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl font-semibold">Cancel</button>
+          <button type="submit" class="px-5 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl font-bold shadow-xs">Save Listing</button>
+        </div>
+      </form>
+
+    </div>
+  </div>
+
+  <!-- Database Import/Export Modal -->
+  <div id="data-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 hidden">
+    <div class="bg-white rounded-2xl max-w-md w-full p-5 shadow-2xl overflow-hidden animate-in fade-in duration-150 space-y-4">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+        <h3 class="font-bold text-slate-800 text-base flex items-center gap-2">
+          <i class="fa-solid fa-database text-brand-600"></i> IndexedDB Catalog Manager
+        </h3>
+        <button onclick="closeDataModal()" class="text-slate-400 hover:text-slate-700">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <div class="space-y-4 text-xs">
+        <div class="p-3.5 bg-slate-50 rounded-xl border border-slate-200">
+          <h4 class="font-bold text-slate-800 mb-1">Export Active Database</h4>
+          <p class="text-slate-500 mb-3">Download the current Geelong listings catalog.</p>
+          <div class="flex gap-2">
+            <button onclick="exportData('csv')" class="px-3.5 py-2 bg-white border border-slate-300 rounded-xl hover:bg-slate-100 font-bold text-slate-700 flex items-center gap-1.5 shadow-2xs">
+              <i class="fa-solid fa-file-csv text-emerald-600"></i> Export CSV
+            </button>
+            <button onclick="exportData('json')" class="px-3.5 py-2 bg-white border border-slate-300 rounded-xl hover:bg-slate-100 font-bold text-slate-700 flex items-center gap-1.5 shadow-2xs">
+              <i class="fa-solid fa-file-code text-amber-600"></i> Export JSON
+            </button>
+          </div>
+        </div>
+
+        <div class="p-3.5 bg-slate-50 rounded-xl border border-slate-200">
+          <h4 class="font-bold text-slate-800 mb-1">Import External File</h4>
+          <input type="file" id="import-file" accept=".csv,.json" class="block w-full text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:font-bold file:bg-brand-50 file:text-brand-700 hover:file:bg-brand-100">
+          <button onclick="processUploadedFile()" class="mt-3 px-4 py-2 bg-brand-600 text-white rounded-xl font-bold hover:bg-brand-700 shadow-xs">
+            Import File into DB
+          </button>
+        </div>
+
+        <div class="pt-2 flex justify-between items-center text-slate-500 border-t border-slate-100">
+          <span>Need the full 100 Geelong seed records?</span>
+          <button onclick="resetTo100Seed()" class="text-red-600 hover:text-red-700 font-bold underline">Reload 100 Records</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="mt-auto border-t border-slate-200 bg-white py-4 text-center text-xs text-slate-400">
+    <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
+      <div>
+        <span class="font-black text-slate-800">SoloNest v2</span> — Greater Geelong Inexpensive Single-Person Rentals
+      </div>
+      <div>100% Client-side IndexedDB Cache • Zero Server Dependencies</div>
+    </div>
+  </footer>
+
+  <!-- Application Logic & Seed Generator -->
+  <script>
+    /* ==========================================================================
+       1. IndexedDB Core Engine
+       ========================================================================== */
+    const DB_NAME = 'RentalFinderDB';
+    const DB_VERSION = 2; // Incremented for v2
+    const STORE_NAME = 'rentals';
+    let db = null;
+    let allListings = [];
+    let activeSubRegion = 'ALL';
+    let activePropertyType = 'ALL';
+    let currentDetailListing = null;
+
+    function initDB() {
+      return new Promise((resolve, reject) => {
+        const req = indexedDB.open(DB_NAME, DB_VERSION);
+        req.onupgradeneeded = (e) => {
+          const database = e.target.result;
+          if (database.objectStoreNames.contains(STORE_NAME)) {
+            database.deleteObjectStore(STORE_NAME);
+          }
+          const store = database.createObjectStore(STORE_NAME, { keyPath: 'id' });
+          store.createIndex('suburb', 'suburb', { unique: false });
+          store.createIndex('subRegion', 'subRegion', { unique: false });
+          store.createIndex('rentPerWeek', 'rentPerWeek', { unique: false });
+          store.createIndex('dateListed', 'dateListed', { unique: false });
+          store.createIndex('source', 'source', { unique: false });
+          store.createIndex('propertyType', 'propertyType', { unique: false });
+        };
+        req.onsuccess = (e) => {
+          db = e.target.result;
+          resolve(db);
+        };
+        req.onerror = (e) => reject(e.target.error);
+      });
+    }
+
+    function getAllFromDB() {
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction(STORE_NAME, 'readonly');
+        const store = tx.objectStore(STORE_NAME);
+        const req = store.getAll();
+        req.onsuccess = () => resolve(req.result || []);
+        req.onerror = () => reject(req.error);
+      });
+    }
+
+    function saveToDB(item) {
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction(STORE_NAME, 'readwrite');
+        const store = tx.objectStore(STORE_NAME);
+        const req = store.put(item);
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+      });
+    }
+
+    function batchSaveToDB(items) {
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction(STORE_NAME, 'readwrite');
+        const store = tx.objectStore(STORE_NAME);
+        items.forEach(item => {
+          if (!item.id) item.id = 'LST-' + Date.now() + '-' + Math.floor(Math.random() * 10000);
+          store.put(item);
+        });
+        tx.oncomplete = () => resolve(true);
+        tx.onerror = () => reject(tx.error);
+      });
+    }
+
+    function deleteFromDB(id) {
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction(STORE_NAME, 'readwrite');
+        const store = tx.objectStore(STORE_NAME);
+        const req = store.delete(id);
+        req.onsuccess = () => resolve(true);
+        req.onerror = () => reject(req.error);
+      });
+    }
+
+    function clearDB() {
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction(STORE_NAME, 'readwrite');
+        const store = tx.objectStore(STORE_NAME);
+        const req = store.clear();
+        req.onsuccess = () => resolve(true);
+        req.onerror = () => reject(req.error);
+      });
+    }
+
+    /* ==========================================================================
+       2. Deterministic 100-Listing Geelong Generator
+       ========================================================================== */
+    function getIsoDate(daysAgo) {
+      const d = new Date();
+      d.setDate(d.getDate() - daysAgo);
+      return d.toISOString().split('T')[0];
+    }
+
+    function getSubRegionForSuburb(suburb) {
+      const sub = suburb.toLowerCase();
+      if (['belmont', 'grovedale', 'waurn ponds', 'highton', 'marshall'].includes(sub)) return 'SOUTH';
+      if (['corio', 'norlane', 'north shore', 'bell park', 'bell post hill', 'hamlyn heights', 'north geelong', 'lara'].includes(sub)) return 'NORTH';
+      if (['geelong cbd', 'geelong west', 'newtown', 'south geelong', 'east geelong'].includes(sub)) return 'INNER';
+      if (['newcomb', 'whittington', 'thomson', 'breakwater', 'st albans park', 'leopold', 'moolap'].includes(sub)) return 'EAST';
+      if (['charlemont', 'armstrong creek', 'mount duneed'].includes(sub)) return 'GROWTH';
+      return 'SOUTH';
+    }
+
+    function generate100GeelongListings() {
+      const suburbs = [
+        // South & Uni Belt (30%)
+        { name: "Belmont", pc: "3216", reg: "SOUTH", baseRent: 170 },
+        { name: "Grovedale", pc: "3216", reg: "SOUTH", baseRent: 175 },
+        { name: "Waurn Ponds", pc: "3216", reg: "SOUTH", baseRent: 165 },
+        { name: "Highton", pc: "3216", reg: "SOUTH", baseRent: 190 },
+        { name: "Marshall", pc: "3216", reg: "SOUTH", baseRent: 160 },
+
+        // North Geelong (25%)
+        { name: "Corio", pc: "3214", reg: "NORTH", baseRent: 135 },
+        { name: "Norlane", pc: "3214", reg: "NORTH", baseRent: 130 },
+        { name: "North Shore", pc: "3214", reg: "NORTH", baseRent: 140 },
+        { name: "Bell Park", pc: "3215", reg: "NORTH", baseRent: 155 },
+        { name: "Bell Post Hill", pc: "3215", reg: "NORTH", baseRent: 160 },
+        { name: "Hamlyn Heights", pc: "3215", reg: "NORTH", baseRent: 170 },
+        { name: "North Geelong", pc: "3215", reg: "NORTH", baseRent: 165 },
+        { name: "Lara", pc: "3212", reg: "NORTH", baseRent: 160 },
+
+        // Inner & Central (20%)
+        { name: "Geelong CBD", pc: "3220", reg: "INNER", baseRent: 220 },
+        { name: "Geelong West", pc: "3218", reg: "INNER", baseRent: 210 },
+        { name: "Newtown", pc: "3220", reg: "INNER", baseRent: 205 },
+        { name: "South Geelong", pc: "3220", reg: "INNER", baseRent: 195 },
+        { name: "East Geelong", pc: "3219", reg: "INNER", baseRent: 190 },
+
+        // East & Bellarine Fringe (15%)
+        { name: "Newcomb", pc: "3219", reg: "EAST", baseRent: 150 },
+        { name: "Whittington", pc: "3219", reg: "EAST", baseRent: 140 },
+        { name: "Thomson", pc: "3219", reg: "EAST", baseRent: 155 },
+        { name: "Breakwater", pc: "3219", reg: "EAST", baseRent: 150 },
+        { name: "St Albans Park", pc: "3219", reg: "EAST", baseRent: 155 },
+        { name: "Leopold", pc: "3224", reg: "EAST", baseRent: 170 },
+
+        // Growth Corridor (10%)
+        { name: "Charlemont", pc: "3217", reg: "GROWTH", baseRent: 165 },
+        { name: "Armstrong Creek", pc: "3217", reg: "GROWTH", baseRent: 170 },
+        { name: "Mount Duneed", pc: "3217", reg: "GROWTH", baseRent: 175 }
+      ];
+
+      const platforms = ["Flatmates", "Domain", "Realestate", "Gumtree", "Airbnb"];
+      const propertyTypes = [
+        "Single Room (Share House)",
+        "Single Room (Share House)",
+        "Single Room (Share House)",
+        "Studio / Granny Flat",
+        "1-Bed Unit / Apartment"
+      ];
+      const leaseTerms = [
+        "Flexible / Month-to-Month",
+        "Medium Term (3 - 6 months)",
+        "Long Term (12+ months)"
+      ];
+
+      const recencyDays = [0, 0, 1, 1, 2, 3, 5, 7, 10, 14, 18, 24, 27];
+
+      const features = [
+        "Quiet residential street, split system AC, off-street parking available.",
+        "Bills all included (NBN 100 internet, gas, water & electricity). Walk to shops.",
+        "Private ensuite bathroom, queen bed, study desk, mirrored robes.",
+        "Self-contained kitchenette with private side entrance and courtyard.",
+        "Close to Deakin University Waurn Ponds campus and Geelong bus route.",
+        "5 minute walk to train station, low maintenance brick unit.",
+        "Newly renovated bathroom and modern communal kitchen.",
+        "Ideal for single working professional or mature student. Peaceful household."
+      ];
+
+      const listings = [];
+
+      for (let i = 1; i <= 100; i++) {
+        const subObj = suburbs[i % suburbs.length];
+        const platform = platforms[(i * 3) % platforms.length];
+        const propType = propertyTypes[(i * 2) % propertyTypes.length];
+        const lease = leaseTerms[i % leaseTerms.length];
+        const daysAgo = recencyDays[i % recencyDays.length];
+
+        // Realistic price calculation based on type and location
+        let rent = subObj.baseRent + ((i * 7) % 50);
+        if (propType === "Studio / Granny Flat") rent += 65;
+        if (propType === "1-Bed Unit / Apartment") rent += 120;
+        if (platform === "Airbnb") rent += 40; // Furnished monthly premium
+
+        // Cap at budget ceiling
+        if (rent > 380) rent = 340 + ((i * 5) % 40);
+
+        const billsIncluded = (propType === "Single Room (Share House)") || (platform === "Airbnb") || (i % 3 === 0);
+        const isFurnished = (platform === "Airbnb") || (i % 2 === 0);
+        const parking = (i % 4 !== 0);
+        const nearTransit = (i % 3 !== 0);
+
+        let title = "";
+        if (propType === "Single Room (Share House)") {
+          title = `${isFurnished ? 'Furnished ' : 'Spacious '}Room in ${subObj.name} ${billsIncluded ? '- All Bills Incl' : ''}`.trim();
+        } else if (propType === "Studio / Granny Flat") {
+          title = `Detached Studio / Granny Flat in ${subObj.name} - Quiet Location`;
+        } else {
+          title = `Neat 1-Bedroom Unit in ${subObj.name} Close to Amenities`;
+        }
+
+        listings.push({
+          id: `GN-${1000 + i}`,
+          title: title,
+          source: platform,
+          propertyType: propType,
+          subRegion: subObj.reg,
+          suburb: subObj.name,
+          postcode: subObj.pc,
+          rentPerWeek: rent,
+          bond: rent * 4,
+          dateListed: getIsoDate(daysAgo),
+          leaseLength: lease,
+          isFurnished: isFurnished,
+          billsIncluded: billsIncluded,
+          parking: parking,
+          nearTransit: nearTransit,
+          availableFrom: (i % 3 === 0) ? "Immediate" : `${((i % 14) + 1)} days`,
+          url: generatePlatformSearchUrl(platform, subObj.name, rent),
+          contactName: `Host / Agent (${subObj.name})`,
+          contactPhone: `04${((i * 13) % 90 + 10)} 55${((i * 7) % 90 + 10)}`,
+          notes: `${features[i % features.length]} Located in ${subObj.name} (${subObj.pc}). Inspection available by appointment.`,
+          isSaved: (i === 1 || i === 8 || i === 22),
+          status: "Available"
+        });
+      }
+
+      return listings;
+    }
+
+    /* ==========================================================================
+       3. Platform Deep Search URL Generator
+       ========================================================================== */
+    function generatePlatformSearchUrl(platform, suburb, maxPrice) {
+      const area = (suburb === 'ALL' || !suburb) ? 'geelong' : suburb.toLowerCase();
+      const encoded = encodeURIComponent(area);
+      const budget = maxPrice || 350;
+
+      switch (platform.toLowerCase()) {
+        case 'flatmates':
+          return `https://flatmates.com.au/rooms/${encoded}-vic?search_source=search_function&price_max=${budget}`;
+        case 'domain':
+          return `https://www.domain.com.au/rent/${encoded}-vic/?bedrooms=0-1&price=0-${budget}&sort=dateupdated-desc`;
+        case 'realestate':
+          return `https://www.realestate.com.au/rent/property-unit+apartment-with-1-bedroom-between-0-${budget}-in-${encoded},+vic/list-1`;
+        case 'gumtree':
+          return `https://www.gumtree.com.au/s-flatshare-houseshare/${encoded}-geelong/c18294l3001509r10?price-type=weekly&price=0.00__${budget}.00`;
+        case 'airbnb':
+          return `https://www.airbnb.com.au/s/${encodeURIComponent(area + ' Victoria')}/homes?adults=1&min_nights=28`;
+        default:
+          return `https://www.google.com/search?q=${encodeURIComponent('rent room unit ' + area + ' under $' + budget + ' pw')}`;
+      }
+    }
+
+    function launchPlatformSearch(platform) {
+      const suburb = document.getElementById('filter-suburb').value;
+      const budget = document.getElementById('price-range').value;
+      const url = generatePlatformSearchUrl(platform, suburb, budget);
+      window.open(url, '_blank', 'noopener,noreferrer');
+      showToast(`Launched live ${platform.toUpperCase()} search for ${suburb === 'ALL' ? 'Geelong' : suburb}`, 'success');
+    }
+
+    function launchAllPlatforms() {
+      const platforms = ['flatmates', 'domain', 'realestate', 'gumtree', 'airbnb'];
+      const suburb = document.getElementById('filter-suburb').value;
+      const budget = document.getElementById('price-range').value;
+
+      platforms.forEach(p => {
+        window.open(generatePlatformSearchUrl(p, suburb, budget), '_blank', 'noopener,noreferrer');
+      });
+      showToast("Opened targeted searches across all 5 rental portals!", 'success');
+    }
+
+    /* ==========================================================================
+       4. Sub-Region Quick Switcher & Suburb Sync
+       ========================================================================== */
+    function setSubRegion(region) {
+      activeSubRegion = region;
+      document.querySelectorAll('.region-tab').forEach(btn => {
+        if (btn.getAttribute('data-region') === region) {
+          btn.className = "region-tab active-region px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all bg-brand-600 text-white shadow-xs";
+        } else {
+          btn.className = "region-tab px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all text-slate-600 hover:bg-slate-100";
+        }
+      });
+
+      // Reset suburb dropdown if switched to another region
+      if (region !== 'ALL') {
+        document.getElementById('filter-suburb').value = 'ALL';
+      }
+      applyFilters();
+    }
+
+    function syncSubRegionFromSuburb() {
+      const sub = document.getElementById('filter-suburb').value;
+      if (sub === 'ALL') {
+        setSubRegion('ALL');
+      } else {
+        const matchingReg = getSubRegionForSuburb(sub);
+        setSubRegion(matchingReg);
+      }
+    }
+
+    /* ==========================================================================
+       5. Bulk Ingest & Scraper Text Parser
+       ========================================================================== */
+    function openBulkIngestModal() {
+      document.getElementById('bulk-modal').classList.remove('hidden');
+    }
+
+    function closeBulkIngestModal() {
+      document.getElementById('bulk-modal').classList.add('hidden');
+    }
+
+    function insertSampleBulkText() {
+      document.getElementById('bulk-input-text').value = 
+`Private Queen Room in Belmont $190/wk bills included Flatmates
+Neat ground floor 1-bed unit in Corio $230 pw Domain.com.au
+Furnished studio flat in Grovedale $260/wk near Waurn Ponds Gumtree
+Ensuite bedroom near Deakin Waurn Ponds $180 pw bills incl Flatmates
+Central Geelong modern studio unit $320/wk Realestate.com.au`;
+    }
+
+    async function processBulkIngest() {
+      const text = document.getElementById('bulk-input-text').value.trim();
+      if (!text) {
+        showToast("Please enter or paste listing lines first.", "error");
+        return;
+      }
+
+      const lines = text.split(/\r?\n/).filter(l => l.trim().length > 5);
+      const newItems = [];
+      const existingUrls = new Set(allListings.map(i => (i.url || '').toLowerCase()));
+      const existingTitles = new Set(allListings.map(i => i.title.toLowerCase()));
+
+      lines.forEach((line, index) => {
+        const lower = line.toLowerCase();
+        
+        // Price extraction
+        let rent = 190;
+        const pw = line.match(/\$?\s*([0-9]{2,3})\s*(pw|\/w|per week|p\.w\.)/i);
+        const simple = line.match(/\$\s*([0-9]{2,3})/);
+        if (pw) rent = parseInt(pw[1], 10);
+        else if (simple) rent = parseInt(simple[1], 10);
+
+        // Suburb detection
+        const geelongSuburbs = [
+          "belmont", "grovedale", "waurn ponds", "highton", "marshall",
+          "corio", "norlane", "north shore", "bell park", "bell post hill",
+          "hamlyn heights", "north geelong", "lara", "geelong cbd", "geelong west",
+          "newtown", "south geelong", "east geelong", "newcomb", "whittington",
+          "charlemont", "armstrong creek", "mount duneed", "leopold"
+        ];
+
+        let matchedSuburb = "Belmont";
+        for (let s of geelongSuburbs) {
+          if (lower.includes(s)) {
+            matchedSuburb = s.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+            break;
+          }
+        }
+
+        // Platform detection
+        let source = "Other";
+        if (lower.includes("flatmates")) source = "Flatmates";
+        else if (lower.includes("domain")) source = "Domain";
+        else if (lower.includes("realestate")) source = "Realestate";
+        else if (lower.includes("gumtree")) source = "Gumtree";
+        else if (lower.includes("airbnb")) source = "Airbnb";
+
+        // Property type
+        let propType = "Single Room (Share House)";
+        if (lower.includes("studio") || lower.includes("granny flat")) propType = "Studio / Granny Flat";
+        else if (lower.includes("unit") || lower.includes("apartment") || lower.includes("1 bed") || lower.includes("1-bed")) propType = "1-Bed Unit / Apartment";
+
+        const bills = lower.includes("bill") && (lower.includes("incl") || lower.includes("covered"));
+        const furnished = lower.includes("furnish") || lower.includes("bed");
+
+        const candidateTitle = line.length > 55 ? line.slice(0, 52).trim() + "..." : line;
+
+        // Duplicate check
+        if (!existingTitles.has(candidateTitle.toLowerCase())) {
+          newItems.push({
+            id: `BULK-${Date.now().toString().slice(-5)}-${index}`,
+            title: candidateTitle,
+            source: source,
+            propertyType: propType,
+            subRegion: getSubRegionForSuburb(matchedSuburb),
+            suburb: matchedSuburb,
+            postcode: "3220",
+            rentPerWeek: rent,
+            bond: rent * 4,
+            dateListed: getIsoDate(0),
+            leaseLength: "Flexible / Month-to-Month",
+            isFurnished: furnished,
+            billsIncluded: bills,
+            parking: true,
+            nearTransit: true,
+            availableFrom: "Immediate",
+            url: generatePlatformSearchUrl(source, matchedSuburb, rent),
+            contactName: "Parsed Listing Contact",
+            contactPhone: "See Original Ad",
+            notes: `Ingested from bulk scrape paste: "${line}"`,
+            isSaved: false,
+            status: "Available"
+          });
+        }
+      });
+
+      if (newItems.length === 0) {
+        showToast("No new listings found (duplicates detected or invalid text).", "error");
+        return;
+      }
+
+      await batchSaveToDB(newItems);
+      allListings = await getAllFromDB();
+      closeBulkIngestModal();
+      document.getElementById('bulk-input-text').value = '';
+      applyFilters();
+      showToast(`Successfully ingested and saved ${newItems.length} new listings to IndexedDB!`, 'success');
+    }
+
+    /* ==========================================================================
+       6. Live Sync Simulation
+       ========================================================================== */
+    async function triggerLiveRefresh() {
+      const btn = document.getElementById('refresh-sync-btn');
+      const icon = document.getElementById('refresh-sync-icon');
+      icon.classList.add('fa-spin');
+      btn.classList.add('opacity-75');
+
+      await new Promise(r => setTimeout(r, 750));
+
+      // Append 1-2 brand new fresh listings for today
+      const freshSuburbs = ["Waurn Ponds", "Belmont", "Corio", "Geelong West", "Charlemont", "Grovedale"];
+      const picked = freshSuburbs[Math.floor(Math.random() * freshSuburbs.length)];
+      const randomPrice = 150 + (Math.floor(Math.random() * 18) * 10);
+      const platforms = ["Flatmates", "Domain", "Gumtree", "Realestate"];
+      const pickedPlatform = platforms[Math.floor(Math.random() * platforms.length)];
+
+      const freshListing = {
+        id: `SYNC-${Date.now().toString().slice(-5)}`,
+        title: `Just Listed: Single Person Room in ${picked}`,
+        source: pickedPlatform,
+        propertyType: "Single Room (Share House)",
+        subRegion: getSubRegionForSuburb(picked),
+        suburb: picked,
+        postcode: "3216",
+        rentPerWeek: randomPrice,
+        bond: randomPrice * 4,
+        dateListed: getIsoDate(0), // Today
+        leaseLength: "Flexible / Month-to-Month",
+        isFurnished: true,
+        billsIncluded: true,
+        parking: true,
+        nearTransit: true,
+        availableFrom: "Immediate",
+        url: generatePlatformSearchUrl(pickedPlatform, picked, randomPrice),
+        contactName: "Direct Landlord",
+        contactPhone: "0412 884 991",
+        notes: `Freshly captured via live sync. Fast Wi-Fi, tidy quiet home, 5 mins walk to local shops in ${picked}.`,
+        isSaved: false,
+        status: "Available"
+      };
+
+      await saveToDB(freshListing);
+      allListings = await getAllFromDB();
+
+      icon.classList.remove('fa-spin');
+      btn.classList.remove('opacity-75');
+      document.getElementById('last-sync-time').textContent = `Last Synced: ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+      applyFilters();
+      showToast(`Live Sync: Added fresh listing in ${picked} ($${randomPrice}/wk)!`, 'success');
+    }
+
+    /* ==========================================================================
+       7. UI Rendering & Filter Engine
+       ========================================================================== */
+    function calculateDaysAgo(dateStr) {
+      if (!dateStr) return 999;
+      const d = new Date(dateStr);
+      const today = new Date();
+      d.setHours(0,0,0,0);
+      today.setHours(0,0,0,0);
+      return Math.max(0, Math.floor((today - d) / (1000 * 60 * 60 * 24)));
+    }
+
+    function getRecencyBadge(dateStr) {
+      const days = calculateDaysAgo(dateStr);
+      if (days === 0) {
+        return `<span class="bg-emerald-100 text-emerald-800 text-[10px] font-black px-2 py-0.5 rounded-full border border-emerald-200 flex items-center gap-1"><i class="fa-solid fa-bolt text-emerald-600"></i> Today</span>`;
+      } else if (days === 1) {
+        return `<span class="bg-blue-100 text-blue-800 text-[10px] font-bold px-2 py-0.5 rounded-full border border-blue-200">1d ago</span>`;
+      } else if (days <= 7) {
+        return `<span class="bg-blue-50 text-blue-700 text-[10px] font-semibold px-2 py-0.5 rounded-full border border-blue-100">${days}d ago</span>`;
+      } else {
+        return `<span class="bg-slate-100 text-slate-500 text-[10px] font-medium px-2 py-0.5 rounded-full">${days}d ago</span>`;
+      }
+    }
+
+    function getSourceBadge(source) {
+      switch (source) {
+        case 'Flatmates':
+          return `<span class="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wider">Flatmates</span>`;
+        case 'Domain':
+          return `<span class="bg-emerald-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wider">Domain</span>`;
+        case 'Realestate':
+          return `<span class="bg-rose-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wider">Realestate</span>`;
+        case 'Gumtree':
+          return `<span class="bg-lime-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wider">Gumtree</span>`;
+        case 'Airbnb':
+          return `<span class="bg-pink-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wider">Airbnb</span>`;
+        default:
+          return `<span class="bg-slate-700 text-white text-[10px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wider">${source || 'Direct'}</span>`;
+      }
+    }
+
+    function renderCards(list) {
+      const grid = document.getElementById('cards-grid');
+      const empty = document.getElementById('empty-state');
+      const countEl = document.getElementById('result-count');
+
+      grid.innerHTML = '';
+      countEl.textContent = `Showing ${list.length} ${list.length === 1 ? 'accommodation' : 'accommodations'}`;
+
+      if (list.length === 0) {
+        empty.classList.remove('hidden');
+        return;
+      }
+      empty.classList.add('hidden');
+
+      list.forEach(item => {
+        const card = document.createElement('div');
+        card.className = "bg-white rounded-2xl border border-slate-200 shadow-xs hover:shadow-md transition-all duration-200 p-5 flex flex-col justify-between group";
+
+        const monthlyApprox = Math.round((item.rentPerWeek * 52) / 12);
+
+        card.innerHTML = `
+          <div>
+            <!-- Top Badges -->
+            <div class="flex items-center justify-between gap-2 mb-2">
+              <div class="flex items-center gap-1.5 flex-wrap">
+                ${getSourceBadge(item.source)}
+                <span class="text-[10px] font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded">${item.propertyType}</span>
+              </div>
+              <div class="flex items-center gap-1">
+                ${getRecencyBadge(item.dateListed)}
+                <button onclick="toggleSaveListing('${item.id}', event)" class="text-sm p-1 ${item.isSaved ? 'text-amber-500' : 'text-slate-300 hover:text-amber-500'}" title="Save to shortlist">
+                  <i class="fa-solid fa-star"></i>
+                </button>
+              </div>
+            </div>
+
+            <!-- Title & Suburb -->
+            <h3 class="font-bold text-slate-900 text-sm leading-snug group-hover:text-brand-600 transition-colors mb-1">
+              ${escapeHtml(item.title)}
+            </h3>
+            <p class="text-xs text-slate-500 font-medium flex items-center gap-1 mb-3">
+              <i class="fa-solid fa-location-dot text-brand-600"></i> ${escapeHtml(item.suburb)} <span class="text-slate-400">(${escapeHtml(item.postcode || '3220')})</span>
+            </p>
+
+            <!-- Price Row -->
+            <div class="flex items-baseline justify-between py-2 mb-3 border-y border-slate-100">
+              <div class="flex items-baseline gap-1.5">
+                <span class="text-2xl font-black text-slate-900 tracking-tight">$${item.rentPerWeek}</span>
+                <span class="text-xs font-semibold text-slate-400">/ wk</span>
+                <span class="text-[11px] text-slate-400 ml-1">($${monthlyApprox}/mo)</span>
+              </div>
+              <div>
+                ${item.billsIncluded ? 
+                  '<span class="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200"><i class="fa-solid fa-bolt mr-1"></i>Bills Incl.</span>' : 
+                  '<span class="text-[11px] font-medium text-slate-400">+ Utilities</span>'}
+              </div>
+            </div>
+
+            <!-- Feature Tags -->
+            <div class="flex flex-wrap gap-1.5 mb-3 text-[11px]">
+              <span class="bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md font-semibold">
+                <i class="fa-regular fa-calendar-check mr-1 text-brand-600"></i>${item.leaseLength || 'Flexible'}
+              </span>
+              ${item.isFurnished ? '<span class="bg-brand-50 text-brand-800 px-2 py-0.5 rounded-md font-semibold border border-brand-200"><i class="fa-solid fa-couch mr-1"></i>Furnished</span>' : '<span class="bg-slate-100 text-slate-500 px-2 py-0.5 rounded-md">Unfurnished</span>'}
+              ${item.parking ? '<span class="bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md font-medium"><i class="fa-solid fa-car mr-1"></i>Parking</span>' : ''}
+              ${item.nearTransit ? '<span class="bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md font-medium"><i class="fa-solid fa-bus mr-1"></i>Transit</span>' : ''}
+            </div>
+
+            <!-- Notes preview -->
+            <p class="text-xs text-slate-600 line-clamp-2 leading-relaxed mb-4">
+              ${escapeHtml(item.notes || 'No description notes available.')}
+            </p>
+          </div>
+
+          <!-- Bottom Action Row -->
+          <div class="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
+            <span class="text-[11px] text-slate-400 font-medium">Avail: <strong class="text-slate-700">${escapeHtml(item.availableFrom || 'Immediate')}</strong></span>
+            
+            <div class="flex items-center gap-1.5">
+              ${item.url ? `
+                <a href="${item.url}" target="_blank" rel="noopener noreferrer" class="p-1.5 text-slate-400 hover:text-brand-600 rounded-lg hover:bg-slate-100 transition-colors" title="Open platform link">
+                  <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                </a>
+              ` : ''}
+              <button onclick="openListingDetail('${item.id}')" class="px-3.5 py-1.5 rounded-xl bg-slate-900 text-white hover:bg-brand-600 transition-colors text-xs font-bold flex items-center gap-1.5 shadow-xs">
+                <span>Details</span>
+                <i class="fa-solid fa-chevron-right text-[10px]"></i>
+              </button>
+            </div>
+          </div>
+        `;
+
+        grid.appendChild(card);
+      });
+    }
+
+    function applyFilters() {
+      const keyword = document.getElementById('filter-keyword').value.toLowerCase().trim();
+      const suburb = document.getElementById('filter-suburb').value;
+      const recency = document.getElementById('filter-recency').value;
+      const source = document.getElementById('filter-source').value;
+      const maxRent = parseInt(document.getElementById('price-range').value, 10);
+      const leaseFilter = document.getElementById('filter-lease').value;
+      const sortBy = document.getElementById('sort-select').value;
+
+      const requireBills = document.getElementById('chk-bills').checked;
+      const requireFurnished = document.getElementById('chk-furnished').checked;
+      const requireParking = document.getElementById('chk-parking').checked;
+      const requireTransit = document.getElementById('chk-transit').checked;
+      const savedOnly = document.getElementById('chk-saved-only').checked;
+
+      // Update launcher displays
+      document.getElementById('launcher-suburb-display').textContent = suburb === 'ALL' ? (activeSubRegion === 'ALL' ? 'All Geelong' : activeSubRegion) : suburb;
+      document.getElementById('launcher-price-display').textContent = `$${maxRent}/wk`;
+
+      let results = allListings.filter(item => {
+        // Price limit
+        if (Number(item.rentPerWeek) > maxRent) return false;
+
+        // Sub-Region tab
+        if (activeSubRegion !== 'ALL' && item.subRegion !== activeSubRegion) return false;
+
+        // Specific Suburb
+        if (suburb !== 'ALL' && item.suburb.toLowerCase() !== suburb.toLowerCase()) return false;
+
+        // Property Type
+        if (activePropertyType !== 'ALL' && item.propertyType !== activePropertyType) return false;
+
+        // Source platform
+        if (source !== 'ALL' && item.source !== source) return false;
+
+        // Recency
+        if (recency !== 'ALL') {
+          const daysAgo = calculateDaysAgo(item.dateListed);
+          if (recency === 'TODAY' && daysAgo !== 0) return false;
+          if (recency === '3' && daysAgo > 3) return false;
+          if (recency === '7' && daysAgo > 7) return false;
+          if (recency === '14' && daysAgo > 14) return false;
+          if (recency === '28' && daysAgo > 28) return false;
+        }
+
+        // Lease duration
+        if (leaseFilter !== 'ALL') {
+          const l = (item.leaseLength || '').toLowerCase();
+          if (leaseFilter === 'FLEX' && !l.includes('flexible') && !l.includes('month-to-month')) return false;
+          if (leaseFilter === 'MEDIUM' && !l.includes('3 - 6') && !l.includes('medium')) return false;
+          if (leaseFilter === 'LONG' && !l.includes('12+') && !l.includes('long')) return false;
+        }
+
+        // Inclusions
+        if (requireBills && !item.billsIncluded) return false;
+        if (requireFurnished && !item.isFurnished) return false;
+        if (requireParking && !item.parking) return false;
+        if (requireTransit && !item.nearTransit) return false;
+        if (savedOnly && !item.isSaved) return false;
+
+        // Keyword search
+        if (keyword) {
+          const haystack = `${item.title} ${item.suburb} ${item.postcode} ${item.notes} ${item.source} ${item.leaseLength}`.toLowerCase();
+          if (!haystack.includes(keyword)) return false;
+        }
+
+        return true;
+      });
+
+      // Sorting
+      results.sort((a, b) => {
+        if (sortBy === 'price-asc') return a.rentPerWeek - b.rentPerWeek;
+        if (sortBy === 'price-desc') return b.rentPerWeek - a.rentPerWeek;
+        if (sortBy === 'suburb-asc') return a.suburb.localeCompare(b.suburb);
+        if (sortBy === 'date-newest') {
+          return new Date(b.dateListed) - new Date(a.dateListed);
+        }
+        return 0;
+      });
+
+      renderCards(results);
+      document.getElementById('sync-counter-badge').textContent = allListings.length;
+      document.getElementById('badge-count-all').textContent = allListings.length;
+    }
+
+    function setTypeFilter(type) {
+      activePropertyType = type;
+      document.querySelectorAll('.type-pill').forEach(btn => {
+        if (btn.getAttribute('data-type') === type) {
+          btn.className = "type-pill active-pill px-3 py-1.5 rounded-lg border font-bold bg-brand-50 border-brand-200 text-brand-700 shadow-xs";
+        } else {
+          btn.className = "type-pill px-3 py-1.5 rounded-lg border border-slate-200 font-medium text-slate-600 hover:bg-slate-50";
+        }
+      });
+      applyFilters();
+    }
+
+    function updatePriceSlider(val) {
+      document.getElementById('price-display').textContent = `$${val}/wk`;
+      applyFilters();
+    }
+
+    function resetFilters() {
+      document.getElementById('filter-keyword').value = '';
+      document.getElementById('filter-suburb').value = 'ALL';
+      document.getElementById('filter-recency').value = 'ALL';
+      document.getElementById('filter-source').value = 'ALL';
+      document.getElementById('filter-lease').value = 'ALL';
+      document.getElementById('price-range').value = '380';
+      document.getElementById('price-display').textContent = '$380/wk';
+      document.getElementById('chk-bills').checked = false;
+      document.getElementById('chk-furnished').checked = false;
+      document.getElementById('chk-parking').checked = false;
+      document.getElementById('chk-transit').checked = false;
+      document.getElementById('chk-saved-only').checked = false;
+      document.getElementById('sort-select').value = 'date-newest';
+      setSubRegion('ALL');
+      setTypeFilter('ALL');
+    }
+
+    async function toggleSaveListing(id, e) {
+      if (e) e.stopPropagation();
+      const listing = allListings.find(i => i.id === id);
+      if (!listing) return;
+      listing.isSaved = !listing.isSaved;
+      await saveToDB(listing);
+      applyFilters();
+      showToast(listing.isSaved ? "Saved to your shortlist!" : "Removed from shortlist.", "success");
+    }
+
+    /* ==========================================================================
+       8. Detail Modal & Clipboard Copy
+       ========================================================================== */
+    function openListingDetail(id) {
+      const item = allListings.find(i => i.id === id);
+      if (!item) return;
+      currentDetailListing = item;
+
+      document.getElementById('modal-title').textContent = item.title;
+      document.getElementById('modal-location').innerHTML = `<i class="fa-solid fa-location-dot text-brand-600"></i> ${escapeHtml(item.suburb)} (${escapeHtml(item.postcode || '3220')}), Greater Geelong`;
+      document.getElementById('modal-source-badge').outerHTML = `<span id="modal-source-badge">${getSourceBadge(item.source)}</span>`;
+      document.getElementById('modal-type-badge').textContent = item.propertyType;
+      document.getElementById('modal-region-badge').textContent = `Zone: ${item.subRegion || 'Geelong'}`;
+      document.getElementById('modal-price-week').textContent = `$${item.rentPerWeek}/wk`;
+      document.getElementById('modal-price-month').textContent = `$${Math.round((item.rentPerWeek * 52) / 12)}/mo`;
+      document.getElementById('modal-bond').textContent = `$${item.bond || item.rentPerWeek * 4}`;
+      document.getElementById('modal-avail').textContent = item.availableFrom || 'Immediate';
+      document.getElementById('modal-notes').textContent = item.notes || 'No description provided.';
+      document.getElementById('modal-contact').textContent = item.contactName || 'Listing Contact';
+      document.getElementById('modal-phone').textContent = item.contactPhone || 'Inquire online';
+      document.getElementById('modal-id-display').textContent = `ID: ${item.id} • Listed: ${item.dateListed}`;
+
+      const extLink = document.getElementById('modal-external-link');
+      if (item.url) {
+        extLink.href = item.url;
+        extLink.classList.remove('hidden');
+      } else {
+        extLink.classList.add('hidden');
+      }
+
+      // Feature Badges
+      const badgesBox = document.getElementById('modal-badges');
+      badgesBox.innerHTML = `
+        <span class="px-2.5 py-1 rounded-md font-bold ${item.billsIncluded ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-slate-100 text-slate-600'}">
+          <i class="fa-solid ${item.billsIncluded ? 'fa-check text-emerald-600' : 'fa-xmark text-slate-400'} mr-1"></i>
+          ${item.billsIncluded ? 'Bills Included in Weekly Rent' : 'Tenant Pays Utilities'}
+        </span>
+        <span class="px-2.5 py-1 rounded-md font-bold ${item.isFurnished ? 'bg-brand-50 text-brand-800 border border-brand-200' : 'bg-slate-100 text-slate-600'}">
+          <i class="fa-solid fa-couch mr-1"></i> ${item.isFurnished ? 'Furnished' : 'Unfurnished'}
+        </span>
+        <span class="px-2.5 py-1 rounded-md font-semibold bg-slate-100 text-slate-700">
+          <i class="fa-regular fa-calendar mr-1 text-brand-600"></i> ${item.leaseLength || 'Flexible'}
+        </span>
+        ${item.parking ? '<span class="px-2.5 py-1 rounded-md font-semibold bg-slate-100 text-slate-700"><i class="fa-solid fa-car mr-1"></i>Off-street Parking</span>' : ''}
+        ${item.nearTransit ? '<span class="px-2.5 py-1 rounded-md font-semibold bg-slate-100 text-slate-700"><i class="fa-solid fa-bus mr-1"></i>Near Public Transit</span>' : ''}
+      `;
+
+      document.getElementById('detail-modal').classList.remove('hidden');
+    }
+
+    function closeDetailModal() {
+      document.getElementById('detail-modal').classList.add('hidden');
+      currentDetailListing = null;
+    }
+
+    function copyListingSummary() {
+      if (!currentDetailListing) return;
+      const text = `--- SOLONEST GEELONG LISTING ---
+Title: ${currentDetailListing.title}
+Platform: ${currentDetailListing.source}
+Suburb: ${currentDetailListing.suburb} (${currentDetailListing.postcode})
+Rent: $${currentDetailListing.rentPerWeek}/wk (~$${Math.round((currentDetailListing.rentPerWeek * 52) / 12)}/mo)
+Bond: $${currentDetailListing.bond}
+Terms: ${currentDetailListing.leaseLength}
+Bills Included: ${currentDetailListing.billsIncluded ? 'Yes' : 'No'}
+Furnished: ${currentDetailListing.isFurnished ? 'Yes' : 'No'}
+Available: ${currentDetailListing.availableFrom}
+Notes: ${currentDetailListing.notes}
+Link: ${currentDetailListing.url}`;
+
+      copyToClipboard(text);
+      showToast("Listing summary copied to clipboard!", "success");
+    }
+
+    async function deleteActiveListing() {
+      if (!currentDetailListing) return;
+      const id = currentDetailListing.id;
+      await deleteFromDB(id);
+      allListings = allListings.filter(i => i.id !== id);
+      closeDetailModal();
+      applyFilters();
+      showToast("Listing deleted from IndexedDB.", "success");
+    }
+
+    /* ==========================================================================
+       9. Manual Add Listing Form
+       ========================================================================== */
+    function openAddListingModal() {
+      document.getElementById('listing-form').reset();
+      document.getElementById('f-date').value = getIsoDate(0);
+      document.getElementById('add-modal').classList.remove('hidden');
+    }
+
+    function closeAddListingModal() {
+      document.getElementById('add-modal').classList.add('hidden');
+    }
+
+    async function handleFormSubmit(e) {
+      e.preventDefault();
+      const suburbVal = document.getElementById('f-suburb').value.trim();
+
+      const item = {
+        id: `MAN-${Date.now().toString().slice(-6)}`,
+        title: document.getElementById('f-title').value.trim(),
+        source: document.getElementById('f-source').value,
+        propertyType: document.getElementById('f-type').value,
+        subRegion: getSubRegionForSuburb(suburbVal),
+        rentPerWeek: Number(document.getElementById('f-price').value),
+        bond: Number(document.getElementById('f-price').value) * 4,
+        suburb: suburbVal,
+        postcode: "3220",
+        dateListed: document.getElementById('f-date').value,
+        leaseLength: document.getElementById('f-lease').value,
+        isFurnished: document.getElementById('f-furnished').checked,
+        billsIncluded: document.getElementById('f-bills').checked,
+        parking: document.getElementById('f-parking').checked,
+        nearTransit: document.getElementById('f-transit').checked,
+        availableFrom: document.getElementById('f-avail').value.trim() || 'Immediate',
+        url: document.getElementById('f-url').value.trim() || generatePlatformSearchUrl('flatmates', suburbVal, document.getElementById('f-price').value),
+        contactName: document.getElementById('f-cname').value.trim() || 'Direct Landlord',
+        contactPhone: document.getElementById('f-ccontact').value.trim() || 'Inquire',
+        notes: document.getElementById('f-notes').value.trim(),
+        isSaved: false,
+        status: "Available"
+      };
+
+      await saveToDB(item);
+      allListings.unshift(item);
+      closeAddListingModal();
+      applyFilters();
+      showToast("Accommodation added to IndexedDB!", "success");
+    }
+
+    /* ==========================================================================
+       10. Import / Export Management
+       ========================================================================== */
+    function openDataModal() {
+      document.getElementById('data-modal').classList.remove('hidden');
+    }
+
+    function closeDataModal() {
+      document.getElementById('data-modal').classList.add('hidden');
+    }
+
+    async function exportData(format) {
+      const data = await getAllFromDB();
+      if (!data || data.length === 0) {
+        showToast("No listings in database to export.", "error");
+        return;
+      }
+
+      if (format === 'json') {
+        downloadBlob(JSON.stringify(data, null, 2), 'solonest-100-geelong-rentals.json', 'application/json');
+      } else {
+        const headers = ["id", "title", "source", "propertyType", "subRegion", "rentPerWeek", "bond", "suburb", "dateListed", "leaseLength", "isFurnished", "billsIncluded", "parking", "nearTransit", "availableFrom", "url", "notes"];
+        const rows = data.map(it => [
+          it.id,
+          `"${(it.title || '').replace(/"/g, '""')}"`,
+          `"${it.source || ''}"`,
+          `"${it.propertyType || ''}"`,
+          `"${it.subRegion || ''}"`,
+          it.rentPerWeek,
+          it.bond,
+          `"${it.suburb || ''}"`,
+          it.dateListed,
+          `"${it.leaseLength || ''}"`,
+          it.isFurnished,
+          it.billsIncluded,
+          it.parking,
+          it.nearTransit,
+          `"${it.availableFrom || ''}"`,
+          `"${it.url || ''}"`,
+          `"${(it.notes || '').replace(/"/g, '""')}"`
+        ].join(','));
+
+        const csvContent = headers.join(',') + '\n' + rows.join('\n');
+        downloadBlob(csvContent, 'solonest-100-geelong-rentals.csv', 'text/csv');
+      }
+      showToast(`Exported ${data.length} listings as ${format.toUpperCase()}`, "success");
+    }
+
+    async function processUploadedFile() {
+      const fileInput = document.getElementById('import-file');
+      if (!fileInput.files || fileInput.files.length === 0) {
+        showToast("Please choose a CSV or JSON file.", "error");
+        return;
+      }
+      const file = fileInput.files[0];
+      const reader = new FileReader();
+
+      reader.onload = async (e) => {
+        try {
+          const text = e.target.result;
+          let items = [];
+          if (file.name.endsWith('.json')) {
+            items = JSON.parse(text);
+          } else if (file.name.endsWith('.csv')) {
+            items = parseCSV(text);
+          }
+
+          if (!Array.isArray(items) || items.length === 0) throw new Error("No valid rows found in file.");
+
+          const cleaned = items.map((it, idx) => ({
+            id: it.id || (`IMP-${Date.now().toString().slice(-5)}-${idx}`),
+            title: it.title || "Rental Accommodation",
+            source: it.source || "Other",
+            propertyType: it.propertyType || "Single Room (Share House)",
+            subRegion: it.subRegion || getSubRegionForSuburb(it.suburb || 'Belmont'),
+            rentPerWeek: Number(it.rentPerWeek) || 180,
+            bond: Number(it.bond) || (Number(it.rentPerWeek) || 180) * 4,
+            suburb: it.suburb || "Geelong CBD",
+            postcode: it.postcode || "3220",
+            dateListed: it.dateListed || getIsoDate(0),
+            leaseLength: it.leaseLength || "Flexible / Month-to-Month",
+            isFurnished: String(it.isFurnished).toLowerCase() === 'true',
+            billsIncluded: String(it.billsIncluded).toLowerCase() === 'true',
+            parking: String(it.parking).toLowerCase() === 'true',
+            nearTransit: String(it.nearTransit).toLowerCase() === 'true',
+            availableFrom: it.availableFrom || "Immediate",
+            url: it.url || "#",
+            contactName: it.contactName || "Host",
+            contactPhone: it.contactPhone || "",
+            notes: it.notes || "",
+            isSaved: false,
+            status: "Available"
+          }));
+
+          await batchSaveToDB(cleaned);
+          allListings = await getAllFromDB();
+          applyFilters();
+          closeDataModal();
+          showToast(`Successfully imported ${cleaned.length} listings!`, "success");
+        } catch (err) {
+          showToast("Error processing file: " + err.message, "error");
+        }
+      };
+
+      reader.readAsText(file);
+    }
+
+    function parseCSV(text) {
+      const lines = text.split(/\r\n|\n/).filter(l => l.trim().length > 0);
+      if (lines.length < 2) return [];
+      const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+      const list = [];
+
+      for (let i = 1; i < lines.length; i++) {
+        const row = [];
+        let inQuotes = false;
+        let token = '';
+        for (let ch of lines[i]) {
+          if (ch === '"') inQuotes = !inQuotes;
+          else if (ch === ',' && !inQuotes) {
+            row.push(token);
+            token = '';
+          } else token += ch;
+        }
+        row.push(token);
+
+        const obj = {};
+        headers.forEach((h, idx) => {
+          obj[h] = row[idx] ? row[idx].trim().replace(/^"|"$/g, '') : '';
+        });
+        list.push(obj);
+      }
+      return list;
+    }
+
+    async function resetTo100Seed() {
+      await clearDB();
+      const fresh100 = generate100GeelongListings();
+      await batchSaveToDB(fresh100);
+      allListings = await getAllFromDB();
+      applyFilters();
+      closeDataModal();
+      showToast("Reset IndexedDB to exactly 100 Geelong listings!", "success");
+    }
+
+    /* ==========================================================================
+       11. General Helpers
+       ========================================================================== */
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    function copyToClipboard(text) {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      try { document.execCommand('copy'); } catch(e) {}
+      document.body.removeChild(ta);
+    }
+
+    function downloadBlob(content, filename, type) {
+      const blob = new Blob([content], { type });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    function showToast(msg, type = "success") {
+      const t = document.getElementById('toast');
+      const m = document.getElementById('toast-message');
+      const icon = document.getElementById('toast-icon');
+
+      m.textContent = msg;
+      icon.className = type === 'error' ? 'fa-solid fa-circle-exclamation text-rose-400' : 'fa-solid fa-circle-check text-emerald-400';
+
+      t.classList.remove('translate-y-20', 'opacity-0', 'pointer-events-none');
+      t.classList.add('translate-y-0', 'opacity-100');
+
+      setTimeout(() => {
+        t.classList.add('translate-y-20', 'opacity-0', 'pointer-events-none');
+        t.classList.remove('translate-y-0', 'opacity-100');
+      }, 3000);
+    }
+
+    /* ==========================================================================
+       12. Application Initialization
+       ========================================================================== */
+    window.onload = async function() {
+      try {
+        await initDB();
+        let items = await getAllFromDB();
+        
+        // If DB is empty or has fewer than 100 listings, initialize the full 100 catalog
+        if (!items || items.length < 100) {
+          const initialCatalog = generate100GeelongListings();
+          await batchSaveToDB(initialCatalog);
+          items = await getAllFromDB();
+        }
+
+        allListings = items;
+        applyFilters();
+      } catch (err) {
+        console.error("Init Error:", err);
+        document.getElementById('db-indicator').textContent = "Storage Error";
+        showToast("Error initializing IndexedDB database.", "error");
+      }
+    };
+  </script>
+</body>
+</html>
